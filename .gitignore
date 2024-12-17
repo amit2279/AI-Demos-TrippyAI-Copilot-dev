@@ -34,4 +34,5 @@ yarn-error.log*
 # System files
 .DS_Store
 Thumbs.db
-EOL
+EOL.env
+src/config.js
