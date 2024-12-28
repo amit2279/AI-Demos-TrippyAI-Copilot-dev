@@ -11,53 +11,68 @@ interface RawLocation {
   image?: string;
 }
 
+function isValidCoordinates(coords: any): coords is [number, number] {
+  if (!Array.isArray(coords)) return false;
+  if (coords.length !== 2) return false;
+  
+  const [lat, lng] = coords;
+  return typeof lat === 'number' && 
+         typeof lng === 'number' &&
+         lat >= -90 && lat <= 90 &&
+         lng >= -180 && lng <= 180;
+}
 
 export function parseJsonLocations(text: string): Location[] {
-  console.log('[LocationParser] Starting JSON extraction', text);
+  console.log('[LocationParser] Starting JSON extraction');
   try {
-    // Try different JSON patterns
     const patterns = [
-      /{\s*"locations":\s*\[[\s\S]*?\]\s*}/,  // Standard format
-      /{\s*"name":\s*"[^"]+",\s*"coordinates":\s*\[[^]]+\].*?}/g  // Single location format
+      /{\s*"locations":\s*\[[\s\S]*?\]\s*}/,
+      /{\s*"name":\s*"[^"]+",\s*"coordinates":\s*\[[^]]+\].*?}/g
     ];
 
+    let locations: RawLocation[] = [];
+
     for (const pattern of patterns) {
-      const match = text.match(pattern);
-      if (!match) continue;
+      const matches = text.match(pattern);
+      if (!matches) continue;
 
-      const jsonStr = match[0];
-      console.log('[LocationParser] Found JSON:', jsonStr);
-
+      const jsonStr = matches[0];
       try {
-        const parsed = pattern === patterns[0] 
-          ? JSON.parse(jsonStr).locations 
-          : [JSON.parse(jsonStr)];
-
-        return parsed.map((loc: RawLocation, index: number) => ({
-          id: `loc-${Date.now()}-${index}`,
-          name: loc.name,
-          position: {
-            lat: Number(loc.coordinates[0]),
-            lng: Number(loc.coordinates[1])
-          },
-          rating: loc.rating || 4.5,
-          reviews: loc.reviews || Math.floor(Math.random() * 40000) + 10000,
-          imageUrl: loc.image || generateImageUrl(loc.name),
-          description: loc.description || ''
-        }));
+        const parsed = JSON.parse(jsonStr);
+        locations = Array.isArray(parsed.locations) ? parsed.locations : [parsed];
+        break;
       } catch (e) {
-        console.error('[LocationParser] JSON parse error:', e);
+        console.warn('[LocationParser] Failed to parse JSON:', e);
+        continue;
       }
     }
 
-    console.log('[LocationParser] No valid JSON found');
-    return [];
+    if (locations.length === 0) {
+      throw new Error('No valid locations found in text');
+    }
+
+    return locations.map((loc: RawLocation, index: number): Location => {
+      if (!isValidCoordinates(loc.coordinates)) {
+        console.error('[LocationParser] Invalid coordinates for location:', loc.name);
+        throw new Error(`Invalid coordinates for location: ${loc.name}`);
+      }
+
+      return {
+        id: `${Date.now()}-loc-${index}`,
+        name: loc.name.trim(),
+        coordinates: loc.coordinates,
+        rating: Number(loc.rating) || 0,
+        reviews: Number(loc.reviews) || 0,
+        description: loc.description?.trim() || '',
+        image: loc.image || generateImageUrl(loc.name)
+      };
+    });
+
   } catch (error) {
-    console.error('[LocationParser] Error in extraction:', error);
-    return [];
+    console.error('[LocationParser] Error parsing locations:', error);
+    throw error;
   }
 }
-
 /*export function parseJsonLocations(text: string): Location[] {
   console.log('[LocationParser] Starting JSON extraction');
   try {
@@ -157,7 +172,7 @@ export function parseTextLocations(text: string): Location[] {
 
 
 export function extractLocationsFromResponse(text: string): Location[] {
-  console.log('[LocationParser] Processing text length:', text);
+  //console.log('[LocationParser] Processing text length:', text);
   
   try {
     // Look for JSON block with proper regex
@@ -176,7 +191,7 @@ export function extractLocationsFromResponse(text: string): Location[] {
       return [];
     }
 
-    console.log('[LocationParser] Extracted JSON:', data);
+    //console.log('[LocationParser] Extracted JSON:', data);
     return data.locations.map((loc: RawLocation, index: number) => ({
       id: `loc-${Date.now()}-${index}`,
       name: loc.name,

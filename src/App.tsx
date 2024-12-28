@@ -149,10 +149,10 @@ function App() {
 
   useEffect(() => {
     if (currentStreamingMessage?.content) {
-      console.log('[App] Extracting locations from streaming message ----------------- ', currentStreamingMessage.content);
+      //console.log('[App] Extracting locations from streaming message ----------------- ', currentStreamingMessage.content);
       const newLocations = extractLocationsFromResponse(currentStreamingMessage.content);
       if (newLocations.length > 0) {
-        console.log('[App] Setting new locations:', newLocations.length);
+        //console.log('[App] Setting new locations:', newLocations.length);
         setLocations(newLocations);
       }
     }
@@ -201,7 +201,7 @@ function App() {
       
       console.log('[App] Processing stream');
       for await (const chunk of stream) {
-        console.log('[App] Received chunk:', chunk.substring(0, 50));
+        //console.log('[App] Received chunk:', chunk.substring(0, 50));
         fullResponse += chunk;
         
         setCurrentStreamingMessage(prev => prev ? {

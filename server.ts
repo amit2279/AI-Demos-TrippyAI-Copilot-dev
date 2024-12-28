@@ -166,6 +166,9 @@ app.post('/api/chat', async (req, res) => {
     let completeResponse = '';
     
     console.warn('=== Starting stream processing ===');
+
+    /* ,
+             "image": "https://images.unsplash.com/photo-SPECIFIC-PHOTO-ID?w=800&h=600&fit=crop" */
     
     const stream = await anthropic.messages.create({
       messages: messages.map((msg: ChatMessage) => ({
@@ -190,8 +193,7 @@ app.post('/api/chat', async (req, res) => {
              "name": "Location Name",
              "coordinates": [latitude, longitude],
              "rating": 4.5,
-             "reviews": 1000,
-             "image": "https://images.unsplash.com/photo-SPECIFIC-PHOTO-ID?w=800&h=600&fit=crop"
+             "reviews": 1000
            }
          ] }
          

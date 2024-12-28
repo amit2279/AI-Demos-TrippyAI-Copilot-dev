@@ -29,7 +29,7 @@ interface ProcessedMessage {
 export function processStreamingMessage(content: string): ProcessedMessage {
  try {
    // Log the incoming content for debugging
-   console.log('[MessageProcessor] Processing content length:', content.length);
+   //console.log('[MessageProcessor] Processing content length:', content.length);
 
    // Find JSON start
    const jsonStartMatch = content.match(/{\s*"locations":/);

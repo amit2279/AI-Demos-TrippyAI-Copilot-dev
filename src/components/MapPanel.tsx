@@ -1,3 +1,103 @@
+/* import React, { useState, useEffect } from 'react';
+import { MapContainer, TileLayer, Marker } from 'react-leaflet';
+import { Location } from '../types/chat';
+import { MapOverlay } from './MapOverlay';
+import { defaultIcon, selectedIcon } from '../config/mapIcons';
+import { MapController } from './map/MapController';
+import { MAP_ZOOM_LEVELS, DEFAULT_CENTER } from '../config/mapConstants';
+import { validateCoordinates } from '../utils/mapUtils';
+import 'leaflet/dist/leaflet.css';
+
+interface MapPanelProps {
+  locations: Location[];
+  onLocationSelect: (location: Location) => void;
+  isLoading?: boolean;
+  isStreaming?: boolean;
+  selectedLocation: Location | null;
+}
+
+export const MapPanel: React.FC<MapPanelProps> = ({
+  locations,
+  onLocationSelect,
+  isLoading = false,
+  isStreaming = false,
+  selectedLocation
+}) => {
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
+  const [visibleLocations, setVisibleLocations] = useState<Location[]>([]);
+
+  useEffect(() => {
+    if (locations.length > 0) {
+      // Filter out locations with invalid coordinates
+      const validLocations = locations.filter(loc => 
+        loc?.position && validateCoordinates(loc.position.lat, loc.position.lng)
+      );
+
+      // Clear existing locations first
+      setVisibleLocations([]);
+      
+      // Add delay before showing new locations
+      const timer = setTimeout(() => {
+        setVisibleLocations(validLocations);
+        setIsFirstLoad(false);
+      }, 800);
+      
+      return () => clearTimeout(timer);
+    }
+    setVisibleLocations([]);
+  }, [locations]);
+
+  const handleMarkerClick = (location: Location) => {
+    console.log('[MapPanel] Marker clicked:', {
+      location: location.name,
+      coordinates: location.position,
+      currentZoom: map.getZoom()
+    });
+    
+    if (location?.position && validateCoordinates(location.position.lat, location.position.lng)) {
+      onLocationSelect(location);
+    } else {
+      console.warn('[MapPanel] Invalid location coordinates:', location);
+    }
+  };
+  
+
+  return (
+    <div className="h-full relative">
+      <MapContainer
+        center={[DEFAULT_CENTER.lat, DEFAULT_CENTER.lng]}
+        zoom={MAP_ZOOM_LEVELS.WORLD}
+        className="h-full w-full"
+        minZoom={2}
+        zoomControl={false}
+      >
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        />
+        <MapController 
+          locations={visibleLocations}
+          selectedLocation={selectedLocation}
+          isFirstLoad={isFirstLoad}
+        />
+        {visibleLocations.map((location) => (
+          location?.position && validateCoordinates(location.position.lat, location.position.lng) ? (
+            <Marker
+              key={location.id}
+              position={[location.position.lat, location.position.lng]}
+              icon={location.id === selectedLocation?.id ? selectedIcon : defaultIcon}
+              eventHandlers={{
+                click: () => handleMarkerClick(location)
+              }}
+            />
+          ) : null
+        ))}
+      </MapContainer>
+      <MapOverlay isLoading={isLoading || isStreaming} />
+    </div>
+  );
+}; */
+
 import React, { useState, useRef, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import { Location } from '../types/chat';

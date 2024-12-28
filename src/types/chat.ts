@@ -8,7 +8,8 @@ export interface Message {
 export interface Location {
   id: string;
   name: string;
-  position: {
+  coordinates?: [number, number]; // Array format from API
+  position?: {                   // Object format for map
     lat: number;
     lng: number;
   };
@@ -22,3 +23,5 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
 }
+
+

@@ -2,14 +2,15 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, Compass } from 'lucide-react';
 import { Message, Location } from '../types/chat';
 import { ChatMessage } from './ChatMessage';
+import { ProcessingIndicator } from './ProcessingIndicator.tsx';
 
 interface ChatPanelProps {
   messages: Message[];
   onSendMessage: (message: string) => void;
   isLoading: boolean;
   onLocationSelect: (location: Location) => void;
-  locations: Location[];
-  currentBotMessage: Message | null;
+  streamingMessage: Message | null;
+  selectedLocation: Location | null;
 }
 
 export const ChatPanel: React.FC<ChatPanelProps> = ({
@@ -17,8 +18,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
   onSendMessage,
   isLoading,
   onLocationSelect,
-  locations,
-  currentBotMessage
+  streamingMessage,
+  selectedLocation
 }) => {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -29,7 +30,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, currentBotMessage?.content]);
+  }, [messages, streamingMessage?.content]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,16 +60,10 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
             key={message.id} 
             message={message} 
             onLocationSelect={onLocationSelect}
-            locations={message.sender === 'bot' ? locations : []}
+            selectedLocation={selectedLocation}
           />
         ))}
-        {currentBotMessage && (
-          <ChatMessage 
-            message={currentBotMessage} 
-            onLocationSelect={onLocationSelect}
-            isStreaming={true}
-          />
-        )}
+        {isLoading && <ProcessingIndicator />}
         <div ref={messagesEndRef} />
       </div>
 

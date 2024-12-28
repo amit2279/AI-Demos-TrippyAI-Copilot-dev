@@ -33,7 +33,7 @@ export interface ChatMessage {
 
 
 export async function* getStreamingChatResponse(messages: ChatMessage[]) {
- console.log('[ChatService] Starting streaming response');
+ //console.log('[ChatService] Starting streaming response');
   try {
     const response = await fetch(API_URL, {  // Replace the hardcoded URL with API_URL
       method: 'POST',

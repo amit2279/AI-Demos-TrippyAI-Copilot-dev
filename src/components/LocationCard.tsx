@@ -57,7 +57,7 @@ export const LocationCard: React.FC<LocationCardProps> = ({
 
   return (
     <div 
-      className="absolute bottom-4 left-4 right-4 bg-white rounded-lg shadow-lg p-4 cursor-pointer hover:shadow-xl transition-shadow"
+      className="absolute bottom-4 left-4 right-4 bg-white rounded-lg shadow-lg p-4 cursor-pointer hover:bg-blue-600 transition-shadow"
       onClick={handleCardClick}
     >
       <button
