@@ -3,6 +3,7 @@ import { Send, Loader2, Compass } from 'lucide-react';
 import { Message, Location } from '../types/chat';
 import { ChatMessage } from './ChatMessage';
 import { ProcessingIndicator } from './ProcessingIndicator.tsx';
+import { useLocationProcessing } from '../hooks/useLocationProcessing';
 
 interface ChatPanelProps {
   messages: Message[];
@@ -23,10 +24,24 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
 }) => {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { checkForLocationData, setIsProcessingLocations } = useLocationProcessing();
+  const [showProcessing, setShowProcessing] = useState(false);
+
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  useEffect(() => {
+    if (streamingMessage?.content) {
+      const hasLocationData = checkForLocationData(streamingMessage.content);
+      setIsProcessingLocations(hasLocationData);
+      setShowProcessing(hasLocationData);
+    } else {
+      setShowProcessing(false);
+    }
+  }, [streamingMessage?.content, checkForLocationData, setIsProcessingLocations]);
+
 
   useEffect(() => {
     scrollToBottom();
@@ -63,7 +78,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
             selectedLocation={selectedLocation}
           />
         ))}
-        {isLoading && <ProcessingIndicator />}
+         {showProcessing && <ProcessingIndicator isVisible={true} />}
         <div ref={messagesEndRef} />
       </div>
 

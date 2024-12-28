@@ -32,7 +32,7 @@ export interface ChatMessage {
 */
 
 
-export async function* getStreamingChatResponse(messages: ChatMessage[]) {
+/* export async function* getStreamingChatResponse(messages: ChatMessage[]) {
  //console.log('[ChatService] Starting streaming response');
   try {
     const response = await fetch(API_URL, {  // Replace the hardcoded URL with API_URL
@@ -97,4 +97,69 @@ export async function* getStreamingChatResponse(messages: ChatMessage[]) {
     console.error('[ChatService] Error in streaming chat response:', error);
     throw error;
   }
-}
+} */
+
+  export async function* getStreamingChatResponse(messages: ChatMessage[]) {
+    try {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ messages })
+      });
+  
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+  
+      if (!response.body) {
+        throw new Error('Response body is null');
+      }
+  
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      const CHUNK_SIZE = 200; // Increased from default small chunks
+  
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+  
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+  
+        // Process larger chunks at once
+        let currentChunk = '';
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(5).trim();
+            
+            if (data === '[DONE]') return;
+            
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.error) throw new Error(parsed.error);
+              if (parsed.text) currentChunk += parsed.text;
+              
+              // Yield accumulated chunk when it gets large enough
+              if (currentChunk.length >= CHUNK_SIZE) {
+                yield currentChunk;
+                currentChunk = '';
+              }
+            } catch (e) {
+              console.warn('[ChatService] Parse error:', e);
+            }
+          }
+        }
+        
+        // Yield any remaining text
+        if (currentChunk) yield currentChunk;
+      }
+    } catch (error) {
+      console.error('[ChatService] Stream error:', error);
+      throw error;
+    }
+  }

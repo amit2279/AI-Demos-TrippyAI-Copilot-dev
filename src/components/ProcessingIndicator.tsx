@@ -1,15 +1,23 @@
 import React from 'react';
 import { MapPin } from 'lucide-react';
 
-export const ProcessingIndicator: React.FC = () => {
+interface ProcessingIndicatorProps {
+  isVisible: boolean;
+}
+
+export const ProcessingIndicator: React.FC<ProcessingIndicatorProps> = ({ 
+  isVisible 
+}) => {
+  if (!isVisible) return null;
+
   return (
-    <div className="flex items-center gap-2 text-gray-600 p-2">
-      <MapPin className="w-5 h-5 animate-bounce" />
-      <div className="flex items-center gap-2">
-        <div className="h-2 w-32 bg-gray-200 rounded-full overflow-hidden">
-          <div className="h-full w-1/2 bg-gray-400 rounded-full animate-pulse" />
-        </div>
-        <span className="text-sm">Processing your request...</span>
+    <div className="flex flex-col gap-2 p-4 animate-fade-in">
+      <div className="flex items-center gap-3 text-gray-600">
+        <MapPin className="w-5 h-5" />
+        <span className="text-sm font-medium">✨ Finding amazing places for you...</span>
+      </div>
+      <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+        <div className="h-full w-full animate-gradient-loading rounded-full" />
       </div>
     </div>
   );
