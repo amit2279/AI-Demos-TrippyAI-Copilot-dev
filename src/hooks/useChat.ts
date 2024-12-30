@@ -10,6 +10,15 @@ interface UseChatProps {
   onError: (message: string) => void;
 }
 
+interface ChatState {
+  messages: Message[];
+  weather: {
+    location: string;
+    show: boolean;
+  } | null;
+}
+
+
 export function useChat({
   messages,
   onMessageUpdate,
@@ -26,6 +35,18 @@ export function useChat({
       sender: 'bot',
       timestamp: new Date()
     };
+
+    const processMessage = async (content: string) => {
+      // Check if message is weather related
+      if (content.toLowerCase().includes('weather')) {
+        const location = extractLocationFromMessage(content);
+        if (location) {
+          setState(prev => ({
+            ...prev,
+            weather: { location, show: true }
+          }));
+        }
+      }
 
     onMessageUpdate(botMessage);
     setIsStreaming(true);

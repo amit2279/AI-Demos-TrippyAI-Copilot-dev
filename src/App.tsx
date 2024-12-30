@@ -102,7 +102,7 @@ function App() {
 
 export default App;
 */
-
+/* 
 import React, { useState, useCallback, useEffect } from 'react';
 import { ChatPanel } from './components/ChatPanel';
 import { MapPanel } from './components/MapPanel';
@@ -249,6 +249,199 @@ function App() {
           streamingMessage={currentStreamingMessage}
           selectedLocation={selectedLocation}
         />
+      </div>
+      
+      <div className="w-2/3 relative">
+        <MapToggle view={mapView} onToggle={setMapView} />
+        <MapPanel
+          view={mapView}
+          locations={locations}
+          onLocationSelect={handleLocationSelect}
+          isLoading={isLoading}
+          isStreaming={isStreaming}
+          selectedLocation={selectedLocation}
+        />
+        {selectedLocation && (
+          <LocationCard
+            location={selectedLocation}
+            onClose={() => setSelectedLocation(null)}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default App; */
+
+
+import React, { useState, useCallback, useEffect } from 'react';
+import { ChatPanel } from './components/ChatPanel';
+import { MapPanel } from './components/MapPanel';
+import { MapToggle } from './components/MapToggle';
+import { LocationCard } from './components/LocationCard';
+import { DefaultWeatherWidget } from './components/weather/DefaultWeatherWidget';
+import { Message, Location } from './types/chat';
+import { getStreamingChatResponse } from './services/claude';
+import { extractLocationsFromResponse } from './services/locationParser';
+import { getRandomCity, generateWelcomeMessage, getCityAsLocation } from './services/cityService';
+
+function App() {
+  console.log('[App] Component rendering');
+  const initialCity = getRandomCity();
+  
+  const [messages, setMessages] = useState<Message[]>([{
+    id: '1',
+    content: generateWelcomeMessage(initialCity),
+    sender: 'bot',
+    timestamp: new Date()
+  }]);
+
+  const [locations, setLocations] = useState<Location[]>([
+    getCityAsLocation(initialCity)
+  ]);
+
+  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [currentStreamingMessage, setCurrentStreamingMessage] = useState<Message | null>(null);
+  const [mapView, setMapView] = useState<'osm' | 'google'>('osm');
+
+  // Location effects
+  useEffect(() => {
+    console.log('Current locations:', locations);
+    console.log('Location objects valid:', locations.every(loc => 
+      loc.position && 
+      typeof loc.position.lat === 'number' && 
+      typeof loc.position.lng === 'number'
+    ));
+  }, [locations]);
+
+  useEffect(() => {
+    if (currentStreamingMessage?.content) {
+      const newLocations = extractLocationsFromResponse(currentStreamingMessage.content);
+      if (newLocations.length > 0) {
+        setLocations(newLocations);
+      }
+    }
+  }, [currentStreamingMessage?.content]);
+
+  const handleLocationSelect = useCallback((location: Location) => {
+    console.log('[App] Location selected:', location.name);
+    setSelectedLocation(location);
+  }, []);
+
+  const handleSendMessage = useCallback(async (content: string) => {
+    console.log('[App] Handling new message:', content);
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      content,
+      sender: 'user',
+      timestamp: new Date()
+    };
+    
+    setMessages(prev => [...prev, userMessage]);
+    setIsLoading(true);
+    setIsStreaming(true);
+    setSelectedLocation(null);
+
+    const botMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      content: '',
+      sender: 'bot',
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, botMessage]);
+    setCurrentStreamingMessage(botMessage);
+
+    try {
+
+      const weatherInfo = {
+        location: "Quebec", // Extract from response
+        temperature: 6, // Extract from response
+        condition: "Rain" // Extract from response
+      };
+  
+      const botMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: response,
+        sender: 'bot',
+        timestamp: new Date(),
+        weatherInfo // Add this to your Message type
+      };
+
+      console.log('[App] Preparing messages for Claude');
+      const claudeMessages = messages.map(msg => ({
+        role: msg.sender === 'bot' ? 'assistant' : 'user',
+        content: msg.content
+      }));
+      claudeMessages.push({ role: 'user', content });
+
+      console.log('[App] Starting streaming response');
+      let fullResponse = '';
+      const stream = getStreamingChatResponse(claudeMessages);
+      
+      console.log('[App] Processing stream');
+      for await (const chunk of stream) {
+        fullResponse += chunk;
+        
+        setCurrentStreamingMessage(prev => prev ? {
+          ...prev,
+          content: fullResponse
+        } : null);
+        
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.id === botMessage.id 
+              ? { ...msg, content: fullResponse }
+              : msg
+          )
+        );
+      }
+
+      console.log('[App] Stream complete');
+    } catch (error) {
+      console.error('[App] Error processing message:', error);
+      const errorMessage = "I'm sorry, I encountered an error. Please try again.";
+      
+      setMessages(prev => 
+        prev.map(msg => 
+          msg.id === botMessage.id 
+            ? { ...msg, content: errorMessage }
+            : msg
+        )
+      );
+    } finally {
+      console.log('[App] Cleaning up');
+      setIsLoading(false);
+      setIsStreaming(false);
+      setCurrentStreamingMessage(null);
+    }
+  }, [messages]);
+
+  return (
+    <div className="flex h-screen bg-gray-100">
+      <div className="w-1/3 border-r flex flex-col">
+        {/* Weather Widget */}
+        <div className="p-4 border-b">
+          <DefaultWeatherWidget 
+            location={selectedLocation?.name || initialCity}
+            className="w-full"
+          />
+        </div>
+
+        {/* Chat Panel */}
+        <div className="flex-1 overflow-auto">
+          <ChatPanel
+            messages={messages}
+            onSendMessage={handleSendMessage}
+            isLoading={isLoading}
+            onLocationSelect={handleLocationSelect}
+            streamingMessage={currentStreamingMessage}
+            selectedLocation={selectedLocation}
+          />
+        </div>
       </div>
       
       <div className="w-2/3 relative">

@@ -120,7 +120,7 @@ export interface ChatMessage {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
-      const CHUNK_SIZE = 200; // Increased from default small chunks
+      const CHUNK_SIZE = 150; // Increased from default small chunks
   
       while (true) {
         const { value, done } = await reader.read();

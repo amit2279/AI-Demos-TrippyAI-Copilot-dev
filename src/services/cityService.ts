@@ -1,4 +1,6 @@
 import { Location } from '../types/chat';
+import { generateDynamicWelcomeMessage } from './greetings/greetingService';
+
 
 interface City {
   name: string;
@@ -338,7 +340,8 @@ export function getRandomCity(): City {
 }
 
 export function generateWelcomeMessage(city: City): string {
-  return `Hi! I'm your travel assistant, currently looking at ${city.name}, ${city.country}, ${city.description}. Where would you like to explore today?`;
+  //return `Hi! I'm your travel assistant, currently looking at ${city.name}, ${city.country}, ${city.description}. Where would you like to explore today?`;
+  return generateDynamicWelcomeMessage(city.name, city.country, 20, 'clear');
 }
 
 export function getCityAsLocation(city: City): Location {
