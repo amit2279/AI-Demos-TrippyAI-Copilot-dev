@@ -280,15 +280,14 @@ import { ChatPanel } from './components/ChatPanel';
 import { MapPanel } from './components/MapPanel';
 import { MapToggle } from './components/MapToggle';
 import { LocationCard } from './components/LocationCard';
-import { DefaultWeatherWidget } from './components/weather/DefaultWeatherWidget';
 import { Message, Location } from './types/chat';
 import { getStreamingChatResponse } from './services/claude';
 import { extractLocationsFromResponse } from './services/locationParser';
 import { getRandomCity, generateWelcomeMessage, getCityAsLocation } from './services/cityService';
 
-function App() {
-  console.log('[App] Component rendering');
+export default function App() {
   const initialCity = getRandomCity();
+  const initialLocation = getCityAsLocation(initialCity);
   
   const [messages, setMessages] = useState<Message[]>([{
     id: '1',
@@ -297,25 +296,12 @@ function App() {
     timestamp: new Date()
   }]);
 
-  const [locations, setLocations] = useState<Location[]>([
-    getCityAsLocation(initialCity)
-  ]);
-
-  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
+  const [locations, setLocations] = useState<Location[]>([initialLocation]);
+  const [selectedLocation, setSelectedLocation] = useState<Location>(initialLocation);
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentStreamingMessage, setCurrentStreamingMessage] = useState<Message | null>(null);
   const [mapView, setMapView] = useState<'osm' | 'google'>('osm');
-
-  // Location effects
-  useEffect(() => {
-    console.log('Current locations:', locations);
-    console.log('Location objects valid:', locations.every(loc => 
-      loc.position && 
-      typeof loc.position.lat === 'number' && 
-      typeof loc.position.lng === 'number'
-    ));
-  }, [locations]);
 
   useEffect(() => {
     if (currentStreamingMessage?.content) {
@@ -343,7 +329,6 @@ function App() {
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
     setIsStreaming(true);
-    setSelectedLocation(null);
 
     const botMessage: Message = {
       id: (Date.now() + 1).toString(),
@@ -356,33 +341,15 @@ function App() {
     setCurrentStreamingMessage(botMessage);
 
     try {
-
-      const weatherInfo = {
-        location: "Quebec", // Extract from response
-        temperature: 6, // Extract from response
-        condition: "Rain" // Extract from response
-      };
-  
-      const botMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: response,
-        sender: 'bot',
-        timestamp: new Date(),
-        weatherInfo // Add this to your Message type
-      };
-
-      console.log('[App] Preparing messages for Claude');
       const claudeMessages = messages.map(msg => ({
         role: msg.sender === 'bot' ? 'assistant' : 'user',
         content: msg.content
       }));
       claudeMessages.push({ role: 'user', content });
 
-      console.log('[App] Starting streaming response');
       let fullResponse = '';
       const stream = getStreamingChatResponse(claudeMessages);
       
-      console.log('[App] Processing stream');
       for await (const chunk of stream) {
         fullResponse += chunk;
         
@@ -399,8 +366,6 @@ function App() {
           )
         );
       }
-
-      console.log('[App] Stream complete');
     } catch (error) {
       console.error('[App] Error processing message:', error);
       const errorMessage = "I'm sorry, I encountered an error. Please try again.";
@@ -413,7 +378,6 @@ function App() {
         )
       );
     } finally {
-      console.log('[App] Cleaning up');
       setIsLoading(false);
       setIsStreaming(false);
       setCurrentStreamingMessage(null);
@@ -422,26 +386,15 @@ function App() {
 
   return (
     <div className="flex h-screen bg-gray-100">
-      <div className="w-1/3 border-r flex flex-col">
-        {/* Weather Widget */}
-        <div className="p-4 border-b">
-          <DefaultWeatherWidget 
-            location={selectedLocation?.name || initialCity}
-            className="w-full"
-          />
-        </div>
-
-        {/* Chat Panel */}
-        <div className="flex-1 overflow-auto">
-          <ChatPanel
-            messages={messages}
-            onSendMessage={handleSendMessage}
-            isLoading={isLoading}
-            onLocationSelect={handleLocationSelect}
-            streamingMessage={currentStreamingMessage}
-            selectedLocation={selectedLocation}
-          />
-        </div>
+      <div className="w-1/3 border-r">
+        <ChatPanel
+          messages={messages}
+          onSendMessage={handleSendMessage}
+          isLoading={isLoading}
+          onLocationSelect={handleLocationSelect}
+          streamingMessage={currentStreamingMessage}
+          selectedLocation={selectedLocation}
+        />
       </div>
       
       <div className="w-2/3 relative">
@@ -464,5 +417,3 @@ function App() {
     </div>
   );
 }
-
-export default App;

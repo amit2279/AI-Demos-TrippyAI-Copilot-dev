@@ -51,8 +51,7 @@ export function getTimeOfDay(): 'morning' | 'afternoon' | 'evening' {
   return 'evening';
 }
 
-export function generateDynamicWelcomeMessage(city: string, country: string, temp: number, condition: string): string {
-  console.log("city: ", city, "country: ", country, "temp: ", temp, "condition: ", condition);
+export function generateWelcomeMessage(city: string, country: string, temp: number, condition: string): string {
   const timeOfDay = getTimeOfDay();
   const tempContext = getTemperatureContext(temp);
   const weatherContext = getWeatherContext(condition);
@@ -62,8 +61,6 @@ export function generateDynamicWelcomeMessage(city: string, country: string, tem
     afternoon: 'Good afternoon!',
     evening: 'Good evening!'
   }[timeOfDay];
-
-  console.log("-----------",`${timeGreeting} ${tempContext} ${temp}°C in ${city}, ${country} ${weatherContext}. Where would you like to explore?`);
 
   return `${timeGreeting} ${tempContext} ${temp}°C in ${city}, ${country} ${weatherContext}. Where would you like to explore?`;
 }

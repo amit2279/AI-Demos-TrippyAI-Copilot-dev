@@ -1,7 +1,7 @@
 import { City } from './types';
 import { Location } from '../../types/chat';
 import { getCountryFlag } from './flags';
-import { generateDynamicWelcomeMessage } from '../greetings/greetingService';
+import { generateWelcomeMessage } from '../greetings/greetingService';
 
 export function formatCityAsLocation(city: City): Location {
   const flag = getCountryFlag(city.country);
@@ -28,5 +28,5 @@ export async function generateInitialMessage(city: City): Promise<string> {
   const conditions = ['clear', 'partly-cloudy', 'cloudy', 'light-rain', 'rain'];
   const condition = conditions[Math.floor(Math.random() * conditions.length)];
 
-  return generateDynamicWelcomeMessage(city.name, `${city.country} ${flag}`, temp, condition);
+  return generateWelcomeMessage(city.name, `${city.country} ${flag}`, temp, condition);
 }

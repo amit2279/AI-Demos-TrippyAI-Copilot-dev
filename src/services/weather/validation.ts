@@ -14,29 +14,12 @@ export function validateApiKey(): void {
   }
 }
 
-/* export function validateLocation(location: string): string {
+export function validateLocation(location: string): string {
   const cleaned = location?.trim();
   if (!cleaned) {
     throw new Error('Location is required');
   }
   // Remove any special characters that might cause API issues
-  return cleaned.replace(/[^\w\s,-]/g, '');
-} */
-
-export function validateLocation(location: unknown): string {
-  if (!location) {
-    throw new Error('Location is required');
-  }
-  
-  if (typeof location !== 'string') {
-    throw new Error('Location must be a string');
-  }
-
-  const cleaned = location.trim();
-  if (!cleaned) {
-    throw new Error('Location cannot be empty');
-  }
-  
   return cleaned.replace(/[^\w\s,-]/g, '');
 }
 

@@ -14,3 +14,18 @@ export interface ForecastData {
   temperature: number;
   condition: string;
 }
+
+
+export interface WeatherForecast {
+  day: string;
+  temperature: number;
+  condition: 'rain' | 'cloudy' | 'sunny' | 'partly-cloudy';
+}
+
+export interface WeatherInfo {
+  currentTemperature: number;
+  currentCondition: string;
+  location: string;
+  forecast: WeatherForecast[];
+}
+

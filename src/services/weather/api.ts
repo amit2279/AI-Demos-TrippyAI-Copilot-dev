@@ -46,7 +46,6 @@ async function fetchWithRetry(url: string, retries = 3): Promise<Response> {
 }
 
 export async function fetchWeatherData(location: string): Promise<WeatherResponse> {
-  console.log('fetchWeatherData ----------- location:', location);
   try {
     validateApiKey();
     const validLocation = validateLocation(location);
@@ -90,7 +89,6 @@ export async function fetchWeatherData(location: string): Promise<WeatherRespons
 }
 
 export async function fetchForecastData(location: string): Promise<ForecastResponse> {
-  console.log('fetchForecastData ----------- location:', location);
   try {
     validateApiKey();
     const validLocation = validateLocation(location);
