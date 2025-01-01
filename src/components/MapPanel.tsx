@@ -244,7 +244,7 @@ export const MapPanel: React.FC<MapPanelProps> = ({
               }
             }}
           >
-            {activePopup === location.id && !document.querySelector('.map-animating') && (
+            {activePopup === location.id && (
               <MapPopup 
                 location={location} 
                 onClose={() => {
@@ -256,7 +256,16 @@ export const MapPanel: React.FC<MapPanelProps> = ({
           </Marker>
         ))}
       </MapContainer>
-      <MapOverlay isLoading={isLoading || isStreaming} />
+      {/* Move overlay inside MapContainer */}
+      {(isLoading || isStreaming) && (
+        <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-[1000] flex items-center justify-center">
+          <div className="animate-pulse text-gray-500">Discovering locations...</div>
+        </div>
+      )}
     </div>
   );
 };
+
+
+
+

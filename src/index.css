@@ -79,3 +79,16 @@
   transform-origin: bottom center;
   transition: transform 0.2s ease-out;
 }
+
+.react-resizable {
+  position: relative;
+}
+
+.react-resizable-handle {
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.react-resizable:hover .react-resizable-handle {
+  opacity: 1;
+}

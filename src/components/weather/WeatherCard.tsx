@@ -10,26 +10,31 @@ interface WeatherCardProps {
 
 export const WeatherCard: React.FC<WeatherCardProps> = ({ data }) => {
   return (
-    <div className="opacity-0 animate-fade-in" style={{ animationDelay: '200ms', animationFillMode: 'forwards' }}>
-      {/* Temperature and Icon Row */}
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-3">
-          <span className="text-3xl font-bold text-gray-800">{Math.round(data.temperature)}°</span>
-          <WeatherIcon condition={data.condition} size="large" animated />
-        </div>
+    <div className="w-full bg-white rounded-lg p-4">
+      {/* Current Weather Section */}
+      <div className="flex items-center gap-4">
+        <span className="text-2xl font-semibold">{Math.round(data.temperature)}°</span>
+        <WeatherIcon 
+          condition={data.condition} 
+          size="medium"
+        />
       </div>
 
-      {/* Weather Details Row */}
-      <WeatherDetails 
-        humidity={data.humidity}
-        windSpeed={data.windSpeed}
-        precipitation={data.precipitation}
-      />
-
-      {/* Location Row */}
-      <div className="mt-2 text-sm text-gray-600">
-        <div>{data.location}</div>
-        <div>{data.date}</div>
+      {/* 5-Day Forecast Section */}
+      <div className="grid grid-cols-5 gap-4 mt-4">
+        {data.forecast?.map((day, index) => (
+          <div key={index} className="flex flex-col items-center">
+            <span className="text-sm text-gray-600">{day.time}</span>
+            <WeatherIcon 
+              condition={day.condition} 
+              size="small"
+              className="my-2"
+            />
+            <span className="text-sm font-medium">
+              {Math.round(day.temperature)}°
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );

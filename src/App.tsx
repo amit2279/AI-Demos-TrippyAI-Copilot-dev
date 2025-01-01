@@ -302,6 +302,8 @@ export default function App() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentStreamingMessage, setCurrentStreamingMessage] = useState<Message | null>(null);
   const [mapView, setMapView] = useState<'osm' | 'google'>('osm');
+  const [isMapLoading, setIsMapLoading] = useState(false);
+  const [isProcessingLocations, setIsProcessingLocations] = useState(false);
 
   useEffect(() => {
     if (currentStreamingMessage?.content) {
@@ -317,6 +319,7 @@ export default function App() {
     setSelectedLocation(location);
   }, []);
 
+  // In handleSendMessage:
   const handleSendMessage = useCallback(async (content: string) => {
     console.log('[App] Handling new message:', content);
     const userMessage: Message = {
@@ -324,11 +327,12 @@ export default function App() {
       content,
       sender: 'user',
       timestamp: new Date()
-    };
+  };
     
     setMessages(prev => [...prev, userMessage]);
-    setIsLoading(true);
+    setIsMapLoading(true); // Only blur map
     setIsStreaming(true);
+    setSelectedLocation(null);
 
     const botMessage: Message = {
       id: (Date.now() + 1).toString(),
@@ -378,42 +382,37 @@ export default function App() {
         )
       );
     } finally {
-      setIsLoading(false);
+      setIsMapLoading(false);
       setIsStreaming(false);
       setCurrentStreamingMessage(null);
     }
   }, [messages]);
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      <div className="w-1/3 border-r">
-        <ChatPanel
-          messages={messages}
-          onSendMessage={handleSendMessage}
-          isLoading={isLoading}
-          onLocationSelect={handleLocationSelect}
-          streamingMessage={currentStreamingMessage}
-          selectedLocation={selectedLocation}
-        />
-      </div>
-      
-      <div className="w-2/3 relative">
-        <MapToggle view={mapView} onToggle={setMapView} />
-        <MapPanel
-          view={mapView}
-          locations={locations}
-          onLocationSelect={handleLocationSelect}
-          isLoading={isLoading}
-          isStreaming={isStreaming}
-          selectedLocation={selectedLocation}
-        />
-        {selectedLocation && (
-          <LocationCard
-            location={selectedLocation}
-            onClose={() => setSelectedLocation(null)}
-          />
-        )}
-      </div>
+    <div className="relative flex h-screen overflow-hidden">
+    <div className="relative z-10"> {/* Chat panel container with higher z-index */}
+      <ChatPanel
+        messages={messages}
+        onSendMessage={handleSendMessage}
+        isLoading={isLoading}
+        onLocationSelect={handleLocationSelect}
+        streamingMessage={currentStreamingMessage}
+        selectedLocation={selectedLocation}
+      />
     </div>
+    
+    <div className="absolute inset-0"> {/* Map container takes full space */}
+      <MapPanel
+        view={mapView}
+        locations={locations}
+        onLocationSelect={handleLocationSelect}
+        isLoading={isLoading}
+        isStreaming={isStreaming}
+        selectedLocation={selectedLocation}
+      />
+    </div>
+  </div>
   );
 }
+
+

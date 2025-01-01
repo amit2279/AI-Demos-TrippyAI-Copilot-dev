@@ -21,14 +21,14 @@ interface WeatherIconProps {
 
 export const WeatherIcon: React.FC<WeatherIconProps> = ({ 
   condition, 
-  size = 'medium',
+  size = 'small',
   animated = false,
   className = ''
 }) => {
   const sizeClass = {
     small: 'w-6 h-6',
     medium: 'w-8 h-8',
-    large: 'w-12 h-12'
+    large: 'w-10 h-10'
   }[size];
 
   const baseClass = `${sizeClass} ${animated ? 'animate-weather' : ''} ${className}`;

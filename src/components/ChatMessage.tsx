@@ -6,6 +6,8 @@ import remarkGfm from 'remark-gfm';
 import { LocationRecommendation } from './LocationRecommendation';
 import { processStreamingMessage } from '../services/chat/messageProcessor';
 import { DefaultWeatherWidget } from './weather/DefaultWeatherWidget';
+import { Resizable } from 'react-resizable';
+import 'react-resizable/css/styles.css';
 
 interface ChatMessageProps {
   message: Message;
@@ -20,15 +22,17 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   onLocationSelect,
   selectedLocation
 }) => {
+  const [width, setWidth] = useState(400); // Default width
   const [displayContent, setDisplayContent] = useState('');
   const [locations, setLocations] = useState<Location[]>([]);
   const [showLocations, setShowLocations] = useState(false);
   const isBot = message.sender === 'bot';
-  //const isFirstMessage = message.id === '1';
 
-  // Extract city name from the first message
+  const onResize = (event: any, { size }: { size: { width: number } }) => {
+    setWidth(size.width);
+  };
+
   const getCityFromMessage = (content: string): string => {
-    // The format is "looking at City, Country"
     const match = content.match(/looking at ([^,]+)/i);
     return match ? match[1].trim() : '';
   };
@@ -40,8 +44,14 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     }
 
     const { textContent, jsonContent } = processStreamingMessage(message.content);
-    setDisplayContent(textContent || (isStreaming ? 'Thinking...' : ''));
+    // Update the displayContent to be cleaner
+    setDisplayContent(textContent
+      .replace(/\bhttps?:\/\/\S+/gi, '') // Remove URLs
+      .replace(/\s+/g, ' ') // Normalize spaces
+      .trim() || (isStreaming ? 'Thinking...' : '')
+    );
 
+    // Only process locations after streaming is complete
     if (jsonContent && !isStreaming) {
       try {
         const data = JSON.parse(jsonContent);
@@ -58,8 +68,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             imageUrl: loc.image || `https://source.unsplash.com/800x600/?${encodeURIComponent(loc.name + ' landmark')}`,
             description: loc.description || ''
           }));
-          setLocations(processedLocations);
-          setTimeout(() => setShowLocations(true), 500);
+          
+          // Add delay before showing location cards
+          setTimeout(() => {
+            setLocations(processedLocations);
+            setShowLocations(true);
+          }, 500);
         }
       } catch (error) {
         console.error('Error parsing locations:', error);
@@ -67,10 +81,14 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     }
   }, [message.content, isStreaming]);
 
+  // Add loading state for cards
+  const [isLoadingCards, setIsLoadingCards] = useState(false);
+
   return (
     <div className="space-y-4">
       <div className={`flex gap-3 ${isBot ? 'flex-row' : 'flex-row-reverse'}`}>
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+        {/* Avatar */}
+        <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
           isBot ? 'bg-gray-100' : 'bg-blue-100'
         }`}>
           {isBot ? (
@@ -80,30 +98,33 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           )}
         </div>
         
-        <div className={`rounded-lg p-3 ${isBot ? 'bg-gray-100' : 'bg-blue-50'}`}>
-          <div className="prose prose-sm max-w-none">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {displayContent}
-            </ReactMarkdown>
-            {isBot && isStreaming && (
-              <span className="inline-block w-2 h-4 ml-1 bg-gray-400 animate-pulse" />
-            )}
+        {/* Message Content Container */}
+        <div className="max-w-[100%] space-y-4 relative">
+          {/* Message Bubble */}
+          <div className={`rounded-lg p-3 ${isBot ? 'bg-gray-100' : 'bg-blue-50'}`}>
+            <div className="prose prose-sm max-w-none">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {displayContent}
+              </ReactMarkdown>
+              {isBot && isStreaming && (
+                <span className="inline-block w-2 h-4 ml-1 bg-gray-400 animate-pulse" />
+              )}
+            </div>
+            <span className="text-xs text-gray-500 mt-2 block">
+              {message.timestamp.toLocaleTimeString()}
+            </span>
           </div>
-          <span className="text-xs text-gray-500 mt-2 block">
-            {message.timestamp.toLocaleTimeString()}
-          </span>
+
+          {/* Weather Widget - increased top spacing */}
+          {isBot && !isStreaming && (
+            <div className="rounded-lg">  {/* removed overflow-hidden and shadow-sm */}
+              <DefaultWeatherWidget 
+                location={getCityFromMessage(message.content)} 
+              />
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Weather Widget - Only show for the first bot message ... isBot && isFirstMessage && !isStreaming && (*/}
-      {isBot && !isStreaming && (
-        <div className="flex">
-          <div className="w-8" /> {/* Spacer to align with avatar */}
-          <div className="ml-3"> {/* Match the gap-3 from the message layout */}
-            <DefaultWeatherWidget location={getCityFromMessage(message.content)} />
-          </div>
-        </div>
-      )}
 
       {/* Location Cards */}
       {isBot && locations.length > 0 && showLocations && (
@@ -123,3 +144,6 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     </div>
   );
 };
+
+
+

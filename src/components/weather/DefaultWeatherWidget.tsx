@@ -36,19 +36,16 @@ export const DefaultWeatherWidget: React.FC<DefaultWeatherWidgetProps> = ({
         if (!mounted) return;
 
         if (err instanceof ConfigurationError) {
-          // Silently fail for configuration errors
           console.warn('Weather widget disabled: API key not configured');
           return;
         }
         
         if (err instanceof GeocodingError) {
-          // Don't show error for geocoding failures
           console.warn('Location not found:', location);
           return;
         }
         
         if (err instanceof WeatherApiError && err.code === 429 && retryCount < 3) {
-          // Rate limit - retry with backoff
           const delay = Math.min(1000 * Math.pow(2, retryCount), 8000);
           retryTimeout = setTimeout(() => {
             fetchWeather(retryCount + 1);
@@ -56,7 +53,6 @@ export const DefaultWeatherWidget: React.FC<DefaultWeatherWidgetProps> = ({
           return;
         }
 
-        // Only show errors for unexpected failures
         setError('Unable to load weather data');
         console.error('Weather service error:', err);
       } finally {
@@ -76,14 +72,12 @@ export const DefaultWeatherWidget: React.FC<DefaultWeatherWidgetProps> = ({
     };
   }, [location]);
 
-  // Don't render anything if there's no data and no error
   if (!weather && !isLoading && !error) return null;
 
-  // Show loading skeleton
   if (isLoading) {
     return (
-      <div className="bg-white rounded-lg p-3 shadow-sm animate-pulse">
-        <div className="space-y-3">
+      <div className="w-full bg-white rounded-lg p-2 animate-pulse">
+        <div className="space-y-2">
           <div className="h-8 bg-gray-200 rounded w-24" />
           <div className="h-4 bg-gray-200 rounded w-32" />
         </div>
@@ -93,43 +87,46 @@ export const DefaultWeatherWidget: React.FC<DefaultWeatherWidgetProps> = ({
 
   if (error) {
     return (
-      <div className="bg-white rounded-lg p-3 shadow-sm">
+      <div className="w-full bg-white rounded-lg p-2">
         <p className="text-sm text-gray-500">{error}</p>
       </div>
     );
   }
 
   if (!weather) return null;
-
+  
   return (
-    <div className={`bg-white rounded-lg p-3 shadow-sm ${className}`}>
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <span className="text-3xl font-bold text-gray-800">
-            {Math.round(weather.temperature)}°
-          </span>
-          <WeatherIcon 
-            condition={weather.condition} 
-            size="large" 
-            animated 
-          />
-        </div>
+    <div className={`w-full bg-white rounded-lg p-2 ${className}`}>
+      {/* Current Weather */}
+      <div className="flex items-start space-x-2">
+        <span className="text-4xl font-medium leading-none text-gray-900">
+          {Math.round(weather.temperature)}°
+        </span>
+        <WeatherIcon 
+          condition={weather.condition} 
+          size="medium"
+          className="w-8 h-8" 
+          animated
+        />
       </div>
 
-      <div className="grid grid-cols-5 gap-2 mt-2">
-        {weather.forecast.map((day, i) => (
-          <div key={i} className="flex flex-col items-center">
-            <span className="text-xs text-gray-600">{day.time}</span>
-            <WeatherIcon 
-              condition={day.condition} 
-              size="small"
-              className="my-1" 
-            />
-            <span className="text-sm font-medium">
-              {Math.round(day.temperature)}°
-            </span>
-          </div>
-        ))}
+      {/* Forecast */}
+      <div className="mt-1">
+        <div className="flex items-center justify-between">
+          {weather.forecast.map((day, i) => (
+            <div key={i} className="flex flex-col items-center space-y-1">
+              <span className="text-sm text-gray-600">{day.time}</span>
+              <WeatherIcon 
+                condition={day.condition} 
+                size="small"
+                className="w-6 h-6" 
+              />
+              <span className="text-sm font-medium text-gray-900">
+                {Math.round(day.temperature)}°
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
