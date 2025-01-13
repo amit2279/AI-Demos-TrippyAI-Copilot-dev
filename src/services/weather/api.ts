@@ -7,42 +7,45 @@ import { validateApiKey, validateLocation } from './validation';
 const cache = WeatherCache.getInstance();
 
 async function fetchWithRetry(url: string, retries = 3): Promise<Response> {
-  try {
-    console.log('Fetching weather data:', url.replace(WEATHER_CONFIG.API_KEY, '[REDACTED]'));
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('Weather API error response:', {
-        status: response.status,
-        statusText: response.statusText,
-        error: errorData
-      });
+  let lastError;
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        
+        if (response.status === 401) {
+          throw new ConfigurationError('Invalid API key or unauthorized access');
+        }
+        
+        if (response.status === 404) {
+          throw new GeocodingError(`Location not found: ${url.split('q=')[1]?.split('&')[0]}`);
+        }
+        
+        if (response.status === 429 && i < retries - 1) {
+          await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1)));
+          continue;
+        }
 
-      if (response.status === 401) {
-        throw new ConfigurationError('Invalid API key or unauthorized access');
+        throw new WeatherApiError(
+          `API request failed: ${response.statusText}`,
+          response.status
+        );
       }
       
-      if (response.status === 429 && retries > 0) {
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        return fetchWithRetry(url, retries - 1);
+      return response;
+    } catch (error) {
+      lastError = error;
+      if (error instanceof ConfigurationError || error instanceof GeocodingError) {
+        throw error;
       }
-
-      throw new WeatherApiError(
-        `API request failed: ${response.statusText}`,
-        response.status
-      );
+      if (i < retries - 1) {
+        await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1)));
+      }
     }
-    
-    return response;
-  } catch (error) {
-    if (error instanceof ConfigurationError) throw error;
-    if (retries > 0) {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      return fetchWithRetry(url, retries - 1);
-    }
-    throw error;
   }
+  throw lastError;
 }
 
 export async function fetchWeatherData(location: string): Promise<WeatherResponse> {

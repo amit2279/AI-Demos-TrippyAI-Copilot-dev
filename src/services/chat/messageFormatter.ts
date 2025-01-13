@@ -50,7 +50,3 @@ export function formatMessage(message: Message): FormatResult {
   return withFlags;
 }
 */
-
-
-
-

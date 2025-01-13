@@ -8,33 +8,27 @@ interface MapToggleProps {
 
 export const MapToggle: React.FC<MapToggleProps> = ({ view, onToggle }) => {
   return (
-    <div className="absolute top-4 right-4 bg-white rounded-lg shadow-md z-[1000]">
-      <div className="flex items-center p-2 gap-2">
-        <button
-          onClick={() => onToggle('osm')}
-          className={`p-2 rounded-lg transition-colors flex items-center gap-2 ${
-            view === 'osm' 
-              ? 'bg-blue-500 text-white' 
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-          title="OpenStreetMap View"
-        >
-          <Map size={20} />
-          <span className="text-sm font-medium">OpenStreetMap</span>
-        </button>
-        <button
-          onClick={() => onToggle('google')}
-          className={`p-2 rounded-lg transition-colors flex items-center gap-2 ${
-            view === 'google' 
-              ? 'bg-blue-500 text-white' 
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-          title="Google Maps View"
-        >
-          <Map size={20} />
-          <span className="text-sm font-medium">Google Maps</span>
-        </button>
-      </div>
+    <div className="bg-white rounded-lg shadow-md p-1 flex gap-1">
+      <button
+        onClick={() => onToggle('osm')}
+        className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+          view === 'osm' 
+            ? 'bg-blue-100 text-blue-700' 
+            : 'text-gray-600 hover:bg-gray-100'
+        }`}
+      >
+        OpenStreetMap
+      </button>
+      <button
+        onClick={() => onToggle('google')}
+        className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+          view === 'google' 
+            ? 'bg-blue-100 text-blue-700' 
+            : 'text-gray-600 hover:bg-gray-100'
+        }`}
+      >
+        Google Maps
+      </button>
     </div>
   );
 };

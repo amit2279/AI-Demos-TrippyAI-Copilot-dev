@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { WeatherIcon } from './WeatherIcon';
 import { WeatherData } from '../../types/weather';
 import { getDefaultWeather } from '../../services/weather/weatherService';
-import { WeatherApiError, GeocodingError, ConfigurationError } from '../../services/weather/errors';
 
 interface DefaultWeatherWidgetProps {
   location: string;
@@ -19,42 +18,20 @@ export const DefaultWeatherWidget: React.FC<DefaultWeatherWidgetProps> = ({
 
   useEffect(() => {
     let mounted = true;
-    let retryTimeout: NodeJS.Timeout;
 
-    async function fetchWeather(retryCount = 0) {
-      if (!location || !mounted) return;
-      
+    async function fetchWeather() {
       try {
         setIsLoading(true);
         setError(null);
         const data = await getDefaultWeather(location);
         if (mounted) {
           setWeather(data);
-          setError(null);
         }
       } catch (err) {
-        if (!mounted) return;
-
-        if (err instanceof ConfigurationError) {
-          console.warn('Weather widget disabled: API key not configured');
-          return;
+        if (mounted) {
+          setError('Unable to load weather data');
+          console.error('Weather fetch error:', err);
         }
-        
-        if (err instanceof GeocodingError) {
-          console.warn('Location not found:', location);
-          return;
-        }
-        
-        if (err instanceof WeatherApiError && err.code === 429 && retryCount < 3) {
-          const delay = Math.min(1000 * Math.pow(2, retryCount), 8000);
-          retryTimeout = setTimeout(() => {
-            fetchWeather(retryCount + 1);
-          }, delay);
-          return;
-        }
-
-        setError('Unable to load weather data');
-        console.error('Weather service error:', err);
       } finally {
         if (mounted) {
           setIsLoading(false);
@@ -63,67 +40,107 @@ export const DefaultWeatherWidget: React.FC<DefaultWeatherWidgetProps> = ({
     }
 
     fetchWeather();
-
-    return () => {
-      mounted = false;
-      if (retryTimeout) {
-        clearTimeout(retryTimeout);
-      }
-    };
+    return () => { mounted = false; };
   }, [location]);
-
-  if (!weather && !isLoading && !error) return null;
 
   if (isLoading) {
     return (
-      <div className="w-full bg-white rounded-lg p-2 animate-pulse">
-        <div className="space-y-2">
-          <div className="h-8 bg-gray-200 rounded w-24" />
-          <div className="h-4 bg-gray-200 rounded w-32" />
+      <div className={`w-full bg-white rounded-lg p-4 ${className}`}>
+        <div className="animate-pulse space-y-4">
+          <div className="flex justify-between items-start">
+            <div className="space-y-2">
+              <div className="h-6 bg-gray-200 rounded w-32"></div>
+              <div className="h-4 bg-gray-200 rounded w-24"></div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="h-8 bg-gray-200 rounded w-16"></div>
+              <div className="h-8 bg-gray-200 rounded-full w-8"></div>
+            </div>
+          </div>
+          <div className="grid grid-cols-7 gap-4 mt-6">
+            {[...Array(7)].map((_, i) => (
+              <div key={i} className="space-y-2">
+                <div className="h-3 bg-gray-200 rounded"></div>
+                <div className="h-8 bg-gray-200 rounded-full mx-auto w-8"></div>
+                <div className="h-3 bg-gray-200 rounded"></div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
   }
 
-  if (error) {
+  if (error || !weather) {
     return (
-      <div className="w-full bg-white rounded-lg p-2">
-        <p className="text-sm text-gray-500">{error}</p>
+      <div className={`w-full bg-white rounded-lg p-4 ${className}`}>
+        <p className="text-sm text-gray-500">{error || 'Weather data unavailable'}</p>
       </div>
     );
   }
 
-  if (!weather) return null;
-  
+  // Extract country from location (assuming format "City, Country")
+  const [city, country] = weather.location.split(',').map(s => s.trim());
+
   return (
-    <div className={`w-full bg-white rounded-lg p-2 ${className}`}>
-      {/* Current Weather */}
-      <div className="flex items-start space-x-2">
-        <span className="text-4xl font-medium leading-none text-gray-900">
-          {Math.round(weather.temperature)}°
-        </span>
-        <WeatherIcon 
-          condition={weather.condition} 
-          size="medium"
-          className="w-8 h-8" 
-          animated
-        />
+    <div className={`w-full bg-white rounded-lg p-4 ${className}`}>
+      {/* Header with current weather */}
+      <div className="flex justify-between items-start mb-6">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-800">{city}</h3>
+          <p className="text-sm text-gray-500">{country}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center">
+            <span className="text-2xl font-medium text-gray-900">
+              {Math.round(weather.temperature)}°
+            </span>
+            <WeatherIcon 
+              condition={weather.condition} 
+              size="medium"
+              className="w-8 h-8 ml-1" 
+              animated
+            />
+          </div>
+          <div className="text-sm text-gray-600 hidden sm:block">
+            {weather.condition}
+          </div>
+        </div>
       </div>
 
-      {/* Forecast */}
-      <div className="mt-1">
-        <div className="flex items-center justify-between">
-          {weather.forecast.map((day, i) => (
+      {/* 7-day Forecast */}
+      <div>
+        <h4 className="text-sm font-medium text-gray-700 mb-4">
+          7-Day Forecast
+        </h4>
+        
+        <div className="grid grid-cols-7 gap-2 text-center">
+          {weather.forecast.slice(1, 8).map((day, i) => (
             <div key={i} className="flex flex-col items-center space-y-1">
-              <span className="text-sm text-gray-600">{day.time}</span>
+              <div className="text-sm font-medium text-gray-800">
+                {day.time}
+              </div>
+              <div className="text-xs text-gray-400">
+                {new Date(day.date).getDate()}
+              </div>
               <WeatherIcon 
                 condition={day.condition} 
                 size="small"
-                className="w-6 h-6" 
+                className="w-6 h-6 my-1" 
               />
-              <span className="text-sm font-medium text-gray-900">
-                {Math.round(day.temperature)}°
-              </span>
+              <div className="space-y-0.5">
+                {day.high !== undefined && (
+                  <div className="text-sm font-medium text-gray-900">{day.high}°</div>
+                )}
+                {day.low !== undefined && (
+                  <div className="text-xs text-gray-500">{day.low}°</div>
+                )}
+                {day.high === undefined && (
+                  <div className="text-sm font-medium text-gray-900">
+                    {Math.round(day.temperature)}°
+                  </div>
+                )}
+              </div>
             </div>
           ))}
         </div>

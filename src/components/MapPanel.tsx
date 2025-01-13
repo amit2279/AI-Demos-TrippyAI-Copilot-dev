@@ -1,110 +1,9 @@
-/* import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker } from 'react-leaflet';
-import { Location } from '../types/chat';
-import { MapOverlay } from './MapOverlay';
-import { defaultIcon, selectedIcon } from '../config/mapIcons';
-import { MapController } from './map/MapController';
-import { MAP_ZOOM_LEVELS, DEFAULT_CENTER } from '../config/mapConstants';
-import { validateCoordinates } from '../utils/mapUtils';
-import 'leaflet/dist/leaflet.css';
-
-interface MapPanelProps {
-  locations: Location[];
-  onLocationSelect: (location: Location) => void;
-  isLoading?: boolean;
-  isStreaming?: boolean;
-  selectedLocation: Location | null;
-}
-
-export const MapPanel: React.FC<MapPanelProps> = ({
-  locations,
-  onLocationSelect,
-  isLoading = false,
-  isStreaming = false,
-  selectedLocation
-}) => {
-  const [isFirstLoad, setIsFirstLoad] = useState(true);
-  const [visibleLocations, setVisibleLocations] = useState<Location[]>([]);
-
-  useEffect(() => {
-    if (locations.length > 0) {
-      // Filter out locations with invalid coordinates
-      const validLocations = locations.filter(loc => 
-        loc?.position && validateCoordinates(loc.position.lat, loc.position.lng)
-      );
-
-      // Clear existing locations first
-      setVisibleLocations([]);
-      
-      // Add delay before showing new locations
-      const timer = setTimeout(() => {
-        setVisibleLocations(validLocations);
-        setIsFirstLoad(false);
-      }, 800);
-      
-      return () => clearTimeout(timer);
-    }
-    setVisibleLocations([]);
-  }, [locations]);
-
-  const handleMarkerClick = (location: Location) => {
-    console.log('[MapPanel] Marker clicked:', {
-      location: location.name,
-      coordinates: location.position,
-      currentZoom: map.getZoom()
-    });
-    
-    if (location?.position && validateCoordinates(location.position.lat, location.position.lng)) {
-      onLocationSelect(location);
-    } else {
-      console.warn('[MapPanel] Invalid location coordinates:', location);
-    }
-  };
-  
-
-  return (
-    <div className="h-full relative">
-      <MapContainer
-        center={[DEFAULT_CENTER.lat, DEFAULT_CENTER.lng]}
-        zoom={MAP_ZOOM_LEVELS.WORLD}
-        className="h-full w-full"
-        minZoom={2}
-        zoomControl={false}
-      >
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        />
-        <MapController 
-          locations={visibleLocations}
-          selectedLocation={selectedLocation}
-          isFirstLoad={isFirstLoad}
-        />
-        {visibleLocations.map((location) => (
-          location?.position && validateCoordinates(location.position.lat, location.position.lng) ? (
-            <Marker
-              key={location.id}
-              position={[location.position.lat, location.position.lng]}
-              icon={location.id === selectedLocation?.id ? selectedIcon : defaultIcon}
-              eventHandlers={{
-                click: () => handleMarkerClick(location)
-              }}
-            />
-          ) : null
-        ))}
-      </MapContainer>
-      <MapOverlay isLoading={isLoading || isStreaming} />
-    </div>
-  );
-}; */
-
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import { Location } from '../types/chat';
 import { MapUpdater } from './map/MapUpdater';
-import { MapOverlay } from './MapOverlay';
 import { MapPopup } from './MapPopup';
-import { MapControls } from './MapControls';
+import { MapToggle } from './MapToggle';
 import 'leaflet/dist/leaflet.css';
 import { icon } from 'leaflet';
 
@@ -180,22 +79,6 @@ export const MapPanel: React.FC<MapPanelProps> = ({
     }
   };
 
-  useEffect(() => {
-    if (selectedLocation) {
-      setActivePopup(selectedLocation.id);
-      if (markerRefs[selectedLocation.id]) {
-        markerRefs[selectedLocation.id].openPopup();
-      }
-    } else {
-      setActivePopup(null);
-      Object.values(markerRefs).forEach((marker: any) => {
-        if (marker && marker.closePopup) {
-          marker.closePopup();
-        }
-      });
-    }
-  }, [selectedLocation, markerRefs]);
-
   const defaultCenter: [number, number] = [20, 0];
   const defaultZoom = 2;
 
@@ -256,16 +139,17 @@ export const MapPanel: React.FC<MapPanelProps> = ({
           </Marker>
         ))}
       </MapContainer>
-      {/* Move overlay inside MapContainer */}
+      {/* Loading overlay only for map */}
       {(isLoading || isStreaming) && (
-        <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-[1000] flex items-center justify-center">
-          <div className="animate-pulse text-gray-500">Discovering locations...</div>
+        <div className="absolute inset-0 bg-white/30 backdrop-blur-[1px] z-[400] pointer-events-none flex items-center justify-center">
+          <div className="bg-white/90 rounded-lg px-4 py-2 shadow-lg">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" />
+              <span className="text-gray-600 font-medium">Discovering locations...</span>
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
 };
-
-
-
-

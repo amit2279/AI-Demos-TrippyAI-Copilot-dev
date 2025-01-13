@@ -1,17 +1,3 @@
-export function formatDate(date: Date, style: 'full' | 'short' = 'full'): string {
-  if (style === 'short') {
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short'
-    });
-  }
-  
-  return date.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'short',
-    day: 'numeric'
-  });
-}
-
 export function mapCondition(weatherId: number): string {
   // Map OpenWeather condition codes to our internal conditions
   // See: https://openweathermap.org/weather-conditions
@@ -58,4 +44,18 @@ export function mapCondition(weatherId: number): string {
   if (weatherId >= 803) return 'overcast';
   
   return 'clear'; // Default fallback
+}
+
+export function formatDate(date: Date, style: 'full' | 'short' = 'full'): string {
+  if (style === 'short') {
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short'
+    });
+  }
+  
+  return date.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric'
+  });
 }

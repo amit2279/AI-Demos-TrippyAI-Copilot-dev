@@ -1,0 +1,4 @@
+/* Leaflet specific styles */
+.leaflet-container img.leaflet-tile {
+    mix-blend-mode: plus-lighter;
+  }

@@ -11,9 +11,21 @@ export interface WeatherData {
 
 export interface ForecastData {
   time: string;
-  date: string; // Added date field
   temperature: number;
   condition: string;
-  high?: number; // Added high temperature
-  low?: number;  // Added low temperature
 }
+
+
+export interface WeatherForecast {
+  day: string;
+  temperature: number;
+  condition: 'rain' | 'cloudy' | 'sunny' | 'partly-cloudy';
+}
+
+export interface WeatherInfo {
+  currentTemperature: number;
+  currentCondition: string;
+  location: string;
+  forecast: WeatherForecast[];
+}
+
