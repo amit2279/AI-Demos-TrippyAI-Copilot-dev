@@ -4,6 +4,8 @@ import { Message, Location } from '../types/chat';
 import { ChatMessage } from './ChatMessage';
 import { ProcessingIndicator } from './ProcessingIndicator';
 import { QuickActionsPanel } from './QuickActionsPanel';
+import { TripPlanner, TripPlannerData } from './TripPlanner';
+import { validateQuery } from '../services/chat/queryValidator';
 import { Resizable } from 'react-resizable';
 import 'react-resizable/css/styles.css';
 
@@ -28,6 +30,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
 }) => {
   const [width, setWidth] = useState(400);
   const [input, setInput] = useState('');
+  const [showTripPlanner, setShowTripPlanner] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showProcessing, setShowProcessing] = useState(false);
 
@@ -46,26 +49,42 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim() && !isLoading) {
+      const validation = validateQuery(input);
       onSendMessage(input);
       setInput('');
     }
   };
 
   const handleQuickAction = (action: string) => {
+    let query = '';
     switch (action) {
       case 'weather':
-        onSendMessage('What\'s the weather like?');
+        query = 'What\'s the weather like?';
         break;
       case 'plan':
-        onSendMessage('Help me plan a trip');
-        break;
+        setShowTripPlanner(true);
+        return;
       case 'find':
-        onSendMessage('Find interesting places to visit');
+        query = 'Show me interesting places to visit';
         break;
       case 'flights':
-        onSendMessage('Show me flight options');
+        query = 'I want to book a flight';
         break;
     }
+    
+    const validation = validateQuery(query);
+    onSendMessage(query);
+  };
+
+  const handleTripPlannerSubmit = (data: TripPlannerData) => {
+    const query = `I'm planning a trip to ${data.destination} in ${data.month}. ` +
+      `I'll be traveling ${data.duration.toLowerCase()} with ${data.travelGroup.toLowerCase()}. ` +
+      `I'm interested in ${data.activities.join(', ')} with a budget of $${data.budget}. ` +
+      `Can you help me plan this trip?`;
+    
+    const validation = validateQuery(query);
+    onSendMessage(query);
+    setShowTripPlanner(false);
   };
 
   return (
@@ -113,12 +132,22 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Fixed bottom section with proper stacking */}
-        <div className="absolute bottom-0 left-0 right-0 bg-white">
-          {/* Quick Actions Panel */}
-          <QuickActionsPanel onActionClick={handleQuickAction} />
+        {/* Trip Planner Modal */}
+        {showTripPlanner && (
+          <div className="absolute inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <TripPlanner
+                onSubmit={handleTripPlannerSubmit}
+                onClose={() => setShowTripPlanner(false)}
+              />
+            </div>
+          </div>
+        )}
 
-          {/* Input Form */}
+        {/* Fixed bottom section */}
+        <div className="absolute bottom-0 left-0 right-0 bg-white">
+          <QuickActionsPanel onActionClick={handleQuickAction} />
+          
           <form onSubmit={handleSubmit} className="border-t p-4 bg-white relative z-30">
             <div className="flex gap-2">
               <input
@@ -143,7 +172,6 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
     </Resizable>
   );
 };
-
 // import React, { useState, useRef, useEffect } from 'react';
 // import { Send, Loader2, Compass, GripVertical } from 'lucide-react';
 // import { Message, Location } from '../types/chat';
