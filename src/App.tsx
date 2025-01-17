@@ -8,6 +8,7 @@ import { extractLocationsFromResponse } from './services/locationParser';
 import { getRandomCity, generateWelcomeMessage, getCityAsLocation } from './services/cityService';
 import { validateQuery } from './services/chat/queryValidator';
 import { cityContext } from './services/cityContext';
+import { processStreamingMessage } from './services/chat/messageProcessor';
 
 export default function App() {
   const initialCity = getRandomCity();
@@ -27,36 +28,87 @@ export default function App() {
   const [currentStreamingMessage, setCurrentStreamingMessage] = useState<Message | null>(null);
   const [mapView, setMapView] = useState<'osm' | 'google'>('osm');
   const [error, setError] = useState<string | null>(null);
+  const [currentWeatherLocation, setCurrentWeatherLocation] = useState<string | null>(null);
 
-  // Set initial city context
   useEffect(() => {
     cityContext.setCurrentCity(initialCity.name);
   }, []);
 
-  // Process locations from streaming message
+  // Function to get city name from coordinates using reverse geocoding
+  const getCityFromCoordinates = async (lat: number, lng: number): Promise<string> => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`
+      );
+      const data = await response.json();
+      console.log('[App] Reverse geocoding result:', data);
+      
+      // Extract city name from address components
+      const city = data.address?.city || 
+                  data.address?.town || 
+                  data.address?.village || 
+                  data.address?.municipality ||
+                  data.address?.county ||
+                  data.display_name.split(',')[0];
+                  
+      console.log('[App] Extracted city name:', city);
+      return city;
+    } catch (error) {
+      console.error('[App] Error getting city name from coordinates:', error);
+      return '';
+    }
+  };
+
   useEffect(() => {
-    if (currentStreamingMessage?.content && !isStreaming) {
-      const newLocations = extractLocationsFromResponse(currentStreamingMessage.content);
-      if (newLocations.length > 0) {
-        console.log('[App] Setting new locations:', newLocations);
-        setLocations(newLocations);
+    if (currentStreamingMessage?.content) {
+      const { jsonContent, weatherLocation } = processStreamingMessage(currentStreamingMessage.content);
+      
+      if (weatherLocation) {
+        console.log('[App] Weather location detected:', weatherLocation);
+        setCurrentWeatherLocation(weatherLocation);
+        return;
+      }
+
+      if (jsonContent) {
+        const newLocations = extractLocationsFromResponse(jsonContent);
+        console.log('[App] Extracted locations:', {
+          count: newLocations.length,
+          locations: newLocations.map(loc => ({
+            name: loc.name,
+            coordinates: [loc.position.lat, loc.position.lng]
+          }))
+        });
+        
+        if (newLocations.length > 0) {
+          setLocations(newLocations);
+          // Get city name from coordinates of first location
+          getCityFromCoordinates(
+            newLocations[0].position.lat, 
+            newLocations[0].position.lng
+          ).then(cityName => {
+            if (cityName) {
+              console.log('[App] Setting city context from coordinates:', cityName);
+              cityContext.setCurrentCity(cityName);
+              setCurrentWeatherLocation(cityName);
+            }
+          });
+        }
       }
     }
-  }, [currentStreamingMessage?.content, isStreaming]);
+  }, [currentStreamingMessage?.content]);
 
-  const handleLocationSelect = useCallback((location: Location) => {
+  const handleLocationSelect = useCallback(async (location: Location) => {
     console.log('[App] Location selected:', location.name);
     setSelectedLocation(location);
     
-    // Only update city context for non-weather queries
-    const lastMessage = messages[messages.length - 1];
-    const isWeatherQuery = lastMessage?.content.toLowerCase().includes('weather');
-    
-    if (!isWeatherQuery) {
-      const cityName = location.name.split(',')[0].trim();
+    // Get city name from coordinates when location is selected
+    const cityName = await getCityFromCoordinates(location.position.lat, location.position.lng);
+    if (cityName) {
+      console.log('[App] Setting city context from selected location:', cityName);
       cityContext.setCurrentCity(cityName);
+      setCurrentWeatherLocation(cityName);
     }
-  }, [messages]);
+  }, []);
 
   const handleSendMessage = useCallback(async (content: string) => {
     console.log('[App] Handling new message:', content);
@@ -80,6 +132,7 @@ export default function App() {
     if (validation.type === 'weather') {
       const weatherLocation = validation.location || cityContext.getCurrentCity();
       console.log('[App] Weather query for location:', weatherLocation);
+      setCurrentWeatherLocation(weatherLocation);
       
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -129,18 +182,9 @@ export default function App() {
               : msg
           )
         );
-
-        // Check if we have a complete JSON block and update locations
-        if (chunk.includes('"locations":')) {
-          const newLocations = extractLocationsFromResponse(fullResponse);
-          if (newLocations.length > 0) {
-            console.log('[App] Updating locations during stream:', newLocations);
-            setLocations(newLocations);
-          }
-        }
       }
     } catch (error) {
-      console.error('[App] Error processing message:', error);
+      console.error('[App] Error:', error);
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       setError(errorMessage);
       
@@ -169,6 +213,7 @@ export default function App() {
           streamingMessage={currentStreamingMessage}
           selectedLocation={selectedLocation}
           error={error}
+          weatherLocation={currentWeatherLocation}
         />
       </div>
       

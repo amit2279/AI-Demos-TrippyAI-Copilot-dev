@@ -16,30 +16,30 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
   const [isAnimating, setIsAnimating] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout>();
 
-  // Validate coordinates
-  const isValidCoordinates = (lat: number, lng: number): boolean => {
-    return !isNaN(lat) && !isNaN(lng) && 
-           lat >= -90 && lat <= 90 && 
-           lng >= -180 && lng <= 180;
-  };
-
-  // Handle location selection
+  // Handle location selection - separate effect for zoom handling
   useEffect(() => {
-    if (!selectedLocation || isAnimating) return;
+    if (!selectedLocation) return;
 
     const { lat, lng } = selectedLocation.position;
     if (!isValidCoordinates(lat, lng)) {
-      console.error('[MapUpdater] Invalid coordinates for location:', selectedLocation.name);
+      console.error('[MapUpdater] Invalid coordinates for selected location:', {
+        name: selectedLocation.name,
+        coordinates: [lat, lng]
+      });
       return;
     }
 
-    console.log('[MapUpdater] Flying to selected location:', selectedLocation.name);
+    console.log('[MapUpdater] Flying to selected location:', {
+      name: selectedLocation.name,
+      coordinates: [lat, lng]
+    });
+    
     setIsAnimating(true);
     
     try {
       map.flyTo(
         [lat, lng],
-        15,
+        18, // Increased zoom level for location cards
         {
           duration: 2,
           easeLinearity: 0.25
@@ -52,6 +52,7 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
 
       timeoutRef.current = setTimeout(() => {
         setIsAnimating(false);
+        console.log('[MapUpdater] Animation complete');
       }, 2000);
     } catch (error) {
       console.error('[MapUpdater] Error flying to location:', error);
@@ -63,46 +64,70 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [selectedLocation, map, isAnimating]);
+  }, [selectedLocation, map]);
 
-  // Handle initial locations update
+  // Handle locations update - separate effect for initial view
   useEffect(() => {
-    if (locations.length === 0 || isAnimating) return;
+    if (locations.length === 0 || selectedLocation) return;
+
+    console.log('[MapUpdater] Received locations update:', {
+      count: locations.length,
+      locations: locations.map(loc => ({
+        name: loc.name,
+        coordinates: [loc.position.lat, loc.position.lng]
+      }))
+    });
 
     try {
       // Filter valid locations
       const validLocations = locations.filter(loc => {
-        const hasValidCoords = loc?.position?.lat != null && 
-                             loc?.position?.lng != null &&
-                             isValidCoordinates(loc.position.lat, loc.position.lng);
-        if (!hasValidCoords) {
-          console.warn('[MapUpdater] Invalid coordinates for location:', loc.name);
+        const isValid = loc?.position?.lat != null && 
+                       loc?.position?.lng != null &&
+                       isValidCoordinates(loc.position.lat, loc.position.lng);
+        
+        if (!isValid) {
+          console.warn('[MapUpdater] Invalid location:', {
+            name: loc.name,
+            position: loc.position
+          });
         }
-        return hasValidCoords;
+        return isValid;
       });
 
-      console.log('[MapUpdater] Valid locations:', validLocations.length);
-
-      if (validLocations.length === 0) return;
+      if (validLocations.length === 0) {
+        console.warn('[MapUpdater] No valid locations to update');
+        return;
+      }
       
-      const points = validLocations.map(loc => 
-        new LatLng(loc.position.lat, loc.position.lng)
-      );
-      
-      const bounds = new LatLngBounds(points);
       setIsAnimating(true);   
 
       if (validLocations.length === 1) {
         const location = validLocations[0];
+        console.log('[MapUpdater] Flying to single location:', {
+          name: location.name,
+          coordinates: [location.position.lat, location.position.lng]
+        });
+
         map.flyTo(
           [location.position.lat, location.position.lng],
-          13,
+          15,
           {
             duration: 2,
             easeLinearity: 0.25
           }
         );
       } else {
+        const bounds = new LatLngBounds(
+          validLocations.map(loc => 
+            new LatLng(loc.position.lat, loc.position.lng)
+          )
+        );
+
+        console.log('[MapUpdater] Flying to bounds:', {
+          bounds: bounds.toBBoxString(),
+          locations: validLocations.length
+        });
+
         const paddedBounds = bounds.pad(0.2);
         map.flyToBounds(paddedBounds, {
           padding: [50, 50],
@@ -118,6 +143,7 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
 
       timeoutRef.current = setTimeout(() => {
         setIsAnimating(false);
+        console.log('[MapUpdater] Animation complete');
       }, 2000);
     } catch (error) {
       console.error('[MapUpdater] Error updating map bounds:', error);
@@ -129,7 +155,13 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [locations, map, isAnimating]);
+  }, [locations, map, selectedLocation]);
 
   return null;
 };
+
+function isValidCoordinates(lat: number, lng: number): boolean {
+  return !isNaN(lat) && !isNaN(lng) && 
+         lat >= -90 && lat <= 90 && 
+         lng >= -180 && lng <= 180;
+}

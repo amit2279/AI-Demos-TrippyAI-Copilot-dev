@@ -73,6 +73,28 @@ export const MapPanel: React.FC<MapPanelProps> = ({
   const [activePopup, setActivePopup] = useState<string | null>(null);
   const mapRef = useRef<L.Map | null>(null);
 
+  // Log location updates for debugging
+  console.log('[MapPanel] Locations updated:', {
+    count: locations.length,
+    locations: locations.map(loc => ({
+      name: loc.name,
+      coordinates: [loc.position.lat, loc.position.lng]
+    }))
+  });
+
+  // Validate coordinates before passing to markers
+  const validLocations = locations.filter(loc => 
+    loc.position && 
+    !isNaN(loc.position.lat) && 
+    !isNaN(loc.position.lng) &&
+    loc.position.lat >= -90 && 
+    loc.position.lat <= 90 &&
+    loc.position.lng >= -180 && 
+    loc.position.lng <= 180
+  );
+
+  console.log('[MapPanel] Valid locations for markers:', validLocations.length);
+
   const setMarkerRef = (id: string, ref: any) => {
     if (ref) {
       markerRefs[id] = ref;
@@ -106,15 +128,14 @@ export const MapPanel: React.FC<MapPanelProps> = ({
       >
         {tileLayer}
         <MapUpdater 
-          locations={locations} 
-          isLoading={isLoading} 
+          locations={validLocations} 
           selectedLocation={selectedLocation}
         />
         <ResetControl 
-          locations={locations} 
+          locations={validLocations} 
           onReset={() => onLocationSelect(null)} 
         />
-        {locations.map((location) => (
+        {validLocations.map((location) => (
           <Marker
             key={location.id}
             position={[location.position.lat, location.position.lng]}
@@ -139,7 +160,6 @@ export const MapPanel: React.FC<MapPanelProps> = ({
           </Marker>
         ))}
       </MapContainer>
-      {/* Loading overlay only for map */}
       {(isLoading || isStreaming) && (
         <div className="absolute inset-0 bg-white/30 backdrop-blur-[1px] z-[400] pointer-events-none flex items-center justify-center">
           <div className="bg-white/90 rounded-lg px-4 py-2 shadow-lg">
