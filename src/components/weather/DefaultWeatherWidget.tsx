@@ -120,15 +120,7 @@ export const DefaultWeatherWidget: React.FC<DefaultWeatherWidgetProps> = ({
                 className="w-6 h-6 my-1" 
               />
               <div className="text-sm font-medium text-gray-900">
-                {day.high !== undefined && (
-                  <div>{day.high}°</div>
-                )}
-                {day.low !== undefined && (
-                  <div className="text-xs text-gray-500">{day.low}°</div>
-                )}
-                {day.high === undefined && (
-                  <div>{Math.round(day.temperature)}°</div>
-                )}
+                {Math.round(day.temperature)}°
               </div>
             </div>
           ))}
