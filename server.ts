@@ -1,4 +1,4 @@
-import express from 'express';
+/* import express from 'express';
 import { Anthropic } from '@anthropic-ai/sdk';
 import { CLAUDE_API_KEY } from './src/config';
 import cors from 'cors';
@@ -21,7 +21,7 @@ const corsOptions = {
   credentials: true
 };
 
-app.use(cors(corsOptions));
+app.use(cors(corsOptions)); */
 
 // Update the Claude Vision endpoint
 /* app.post('/api/claude/vision', async (req, res) => {
@@ -125,8 +125,62 @@ app.use(cors(corsOptions));
 }); */
 // In server.ts
 
-// Add this new endpoint
+import express from 'express';
+import { Anthropic } from '@anthropic-ai/sdk';
+import { CLAUDE_API_KEY } from './src/config';
+import cors from 'cors';
+
+const app = express();
+
+// Increase payload size limit but keep it reasonable
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ limit: '5mb', extended: true }));
+
+const anthropic = new Anthropic({
+  apiKey: CLAUDE_API_KEY
+});
+
+// CORS configuration with proper error handling
+const corsOptions = {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'https://ai-demo-trippy-j8z9fihhr-amits-projects-04ce3c09.vercel.app',
+      'https://ai-demo-trippy.vercel.app'
+    ];
+    
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'],
+  credentials: true,
+  maxAge: 86400
+};
+
+app.use(cors(corsOptions));
+
+// Error handling middleware
+app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('Server error:', err);
+  res.status(500).json({ 
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
+// Claude Vision endpoint with better error handling
 app.post('/api/claude/vision', async (req, res) => {
+  console.log('Received vision request');
+  
   try {
     const { image, prompt } = req.body;
 
@@ -134,12 +188,22 @@ app.post('/api/claude/vision', async (req, res) => {
       return res.status(400).json({ error: 'No image provided' });
     }
 
-    // Validate base64 image size (max 1.5MB after base64 encoding)
-    const sizeInBytes = Buffer.from(image, 'base64').length;
-    if (sizeInBytes > 1.5 * 1024 * 1024) {
-      return res.status(413).json({ error: 'Image too large. Maximum size is 1.5MB' });
+    if (!prompt) {
+      return res.status(400).json({ error: 'No prompt provided' });
     }
 
+    // Validate base64 image
+    try {
+      const buffer = Buffer.from(image, 'base64');
+      if (buffer.length > 5 * 1024 * 1024) { // 5MB limit
+        return res.status(413).json({ error: 'Image too large. Maximum size is 5MB' });
+      }
+    } catch (error) {
+      return res.status(400).json({ error: 'Invalid base64 image data' });
+    }
+
+    console.log('Processing image with Claude Vision...');
+    
     const response = await anthropic.messages.create({
       model: 'claude-3-opus-20240229',
       max_tokens: 1024,
@@ -160,11 +224,11 @@ app.post('/api/claude/vision', async (req, res) => {
       temperature: 0.7
     });
 
+    console.log('Claude Vision response received');
     res.json({ response: response.content[0].text });
   } catch (error) {
     console.error('Claude Vision API error:', error);
     
-    // More specific error messages
     if (error instanceof Error) {
       if (error.message.includes('413')) {
         return res.status(413).json({ error: 'Image too large for processing' });
@@ -172,12 +236,14 @@ app.post('/api/claude/vision', async (req, res) => {
       if (error.message.includes('429')) {
         return res.status(429).json({ error: 'Rate limit exceeded. Please try again later' });
       }
+      if (error.message.includes('401')) {
+        return res.status(401).json({ error: 'Invalid API key' });
+      }
     }
     
     res.status(500).json({ error: 'Failed to process image' });
   }
 });
-
 
 
 const port = process.env.PORT || 3000;

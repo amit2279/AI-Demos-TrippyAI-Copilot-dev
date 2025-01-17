@@ -1,9 +1,8 @@
 import { Location, Message } from '../types/chat';
-import { CLAUDE_API_KEY } from '../config';
 
-const MAX_IMAGE_SIZE = 1024 * 1024; // 1MB max after processing
-const MAX_DIMENSION = 800; // Reduced maximum dimension
-const JPEG_QUALITY = 0.6; // Reduced JPEG quality
+const MAX_IMAGE_SIZE = 4 * 1024 * 1024; // 4MB max after processing
+const MAX_DIMENSION = 800; // Maximum dimension
+const JPEG_QUALITY = 0.7; // JPEG quality
 
 async function resizeImage(file: File): Promise<Blob> {
   return new Promise((resolve, reject) => {
@@ -37,10 +36,8 @@ async function resizeImage(file: File): Promise<Blob> {
         return;
       }
       
-      // Use better image smoothing
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
-      
       ctx.drawImage(img, 0, 0, width, height);
       
       canvas.toBlob(
@@ -49,24 +46,7 @@ async function resizeImage(file: File): Promise<Blob> {
             reject(new Error('Failed to create blob'));
             return;
           }
-          
-          // Check if size is still too large
-          if (blob.size > MAX_IMAGE_SIZE) {
-            // Try again with lower quality
-            canvas.toBlob(
-              (reducedBlob) => {
-                if (!reducedBlob) {
-                  reject(new Error('Failed to create reduced blob'));
-                  return;
-                }
-                resolve(reducedBlob);
-              },
-              'image/jpeg',
-              0.4 // Even lower quality as fallback
-            );
-          } else {
-            resolve(blob);
-          }
+          resolve(blob);
         },
         'image/jpeg',
         JPEG_QUALITY
@@ -78,7 +58,6 @@ async function resizeImage(file: File): Promise<Blob> {
   });
 }
 
-// Update the API endpoint to use our proxy
 const VISION_API_URL = process.env.NODE_ENV === 'production'
   ? '/api/claude/vision'
   : 'http://localhost:3000/api/claude/vision';
@@ -89,13 +68,17 @@ export async function processLocationImages(images: File[]): Promise<Location[]>
     
     for (const image of images) {
       try {
+        console.log('Processing image:', image.name);
+        
         // Check initial file size
         if (image.size > 10 * 1024 * 1024) {
-          throw new Error(`Image ${image.name} is too large. Maximum size is 10MB`);
+          console.warn(`Image ${image.name} is too large, skipping`);
+          continue;
         }
 
         // Resize image
         const processedImage = await resizeImage(image);
+        console.log('Image resized successfully');
         
         // Convert to base64
         const base64Image = await new Promise<string>((resolve, reject) => {
@@ -111,7 +94,8 @@ export async function processLocationImages(images: File[]): Promise<Location[]>
           reader.readAsDataURL(processedImage);
         });
 
-        // Process with our proxy endpoint
+        console.log('Sending request to vision API...');
+        
         const response = await fetch(VISION_API_URL, {
           method: 'POST',
           headers: {
@@ -124,30 +108,30 @@ export async function processLocationImages(images: File[]): Promise<Location[]>
         });
 
         if (!response.ok) {
-          const error = await response.json();
-          throw new Error(`API error: ${error.error || response.statusText}`);
+          throw new Error(`API error: ${response.statusText}`);
         }
 
         const data = await response.json();
-        const jsonMatch = data.response.match(/\{.*\}/s);
+        console.log('Vision API response received');
         
-        if (!jsonMatch) {
-          throw new Error('No valid JSON found in response');
+        try {
+          const locationData = JSON.parse(data.response);
+          locations.push({
+            id: `loc-${Date.now()}-${Math.random()}`,
+            name: locationData.name,
+            position: {
+              lat: locationData.coordinates[0],
+              lng: locationData.coordinates[1]
+            },
+            rating: 4.5,
+            reviews: 10000,
+            imageUrl: base64Image,
+            description: locationData.description
+          });
+        } catch (parseError) {
+          console.error('Error parsing location data:', parseError);
+          continue;
         }
-
-        const locationData = JSON.parse(jsonMatch[0]);
-        locations.push({
-          id: `loc-${Date.now()}-${Math.random()}`,
-          name: locationData.name,
-          position: {
-            lat: locationData.coordinates[0],
-            lng: locationData.coordinates[1]
-          },
-          rating: 4.5,
-          reviews: 10000,
-          imageUrl: base64Image,
-          description: locationData.description
-        });
 
         // Add delay between images
         await new Promise(resolve => setTimeout(resolve, 1000));
