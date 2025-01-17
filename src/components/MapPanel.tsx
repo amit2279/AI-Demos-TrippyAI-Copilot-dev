@@ -23,6 +23,7 @@ interface MapPanelProps {
   isLoading: boolean;
   isStreaming: boolean;
   selectedLocation?: Location | null;
+  isProcessingLocation?: boolean;
 }
 
 const ResetControl: React.FC<{ locations: Location[]; onReset: () => void }> = ({ 
@@ -40,7 +41,7 @@ const ResetControl: React.FC<{ locations: Location[]; onReset: () => void }> = (
     }, map.getBounds());
     
     map.flyToBounds(bounds.pad(0.2), {
-      duration: 1.5,
+      duration: 3.5, // Increased duration
       easeLinearity: 0.25
     });
 
@@ -67,7 +68,8 @@ export const MapPanel: React.FC<MapPanelProps> = ({
   onLocationSelect,
   isLoading,
   isStreaming,
-  selectedLocation
+  selectedLocation,
+  isProcessingLocation = false
 }) => {
   const [markerRefs] = useState<Record<string, any>>({});
   const [activePopup, setActivePopup] = useState<string | null>(null);
@@ -160,7 +162,8 @@ export const MapPanel: React.FC<MapPanelProps> = ({
           </Marker>
         ))}
       </MapContainer>
-      {(isLoading || isStreaming) && (
+      {/* Only show loading overlay when processing locations */}
+      {(isProcessingLocation) && (
         <div className="absolute inset-0 bg-white/30 backdrop-blur-[1px] z-[400] pointer-events-none flex items-center justify-center">
           <div className="bg-white/90 rounded-lg px-4 py-2 shadow-lg">
             <div className="flex items-center gap-2">

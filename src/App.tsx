@@ -29,6 +29,7 @@ export default function App() {
   const [mapView, setMapView] = useState<'osm' | 'google'>('osm');
   const [error, setError] = useState<string | null>(null);
   const [currentWeatherLocation, setCurrentWeatherLocation] = useState<string | null>(null);
+  const [isProcessingLocation, setIsProcessingLocation] = useState(false);
 
   useEffect(() => {
     cityContext.setCurrentCity(initialCity.name);
@@ -61,7 +62,7 @@ export default function App() {
 
   useEffect(() => {
     if (currentStreamingMessage?.content) {
-      const { jsonContent, weatherLocation } = processStreamingMessage(currentStreamingMessage.content);
+      const { textContent, jsonContent, weatherLocation } = processStreamingMessage(currentStreamingMessage.content);
       
       if (weatherLocation) {
         console.log('[App] Weather location detected:', weatherLocation);
@@ -92,6 +93,45 @@ export default function App() {
               setCurrentWeatherLocation(cityName);
             }
           });
+        }
+      } else {
+        // Extract potential city name from text content for general queries
+        const cityMatch = textContent.match(/^([\w\s]+?)(?:,|\s+is\s+)/i);
+        if (cityMatch) {
+          const cityName = cityMatch[1].trim();
+          console.log('[App] Setting city from text content:', cityName);
+          cityContext.setCurrentCity(cityName);
+          // Create a basic location for the city to update map
+          const basicLocation: Location = {
+            id: `city-${Date.now()}`,
+            name: cityName,
+            position: {
+              // Approximate coordinates - will be refined by geocoding
+              lat: 0,
+              lng: 0
+            },
+            rating: 4.5,
+            reviews: 10000,
+            imageUrl: `https://source.unsplash.com/800x600/?${encodeURIComponent(cityName + ' city')}`
+          };
+          setLocations([basicLocation]);
+          
+          // Get actual coordinates for the city
+          fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cityName)}&format=json&limit=1`)
+            .then(res => res.json())
+            .then(data => {
+              if (data[0]) {
+                const updatedLocation = {
+                  ...basicLocation,
+                  position: {
+                    lat: parseFloat(data[0].lat),
+                    lng: parseFloat(data[0].lon)
+                  }
+                };
+                setLocations([updatedLocation]);
+              }
+            })
+            .catch(error => console.error('Error getting city coordinates:', error));
         }
       }
     }
@@ -127,6 +167,7 @@ export default function App() {
     setIsLoading(true);
     setIsStreaming(true);
     setSelectedLocation(null);
+    setIsProcessingLocation(validation.isExplicitLocationRequest);
 
     // Handle weather queries
     if (validation.type === 'weather') {
@@ -198,6 +239,7 @@ export default function App() {
     } finally {
       setIsLoading(false);
       setIsStreaming(false);
+      setIsProcessingLocation(false);
       setCurrentStreamingMessage(null);
     }
   }, [messages]);
@@ -228,6 +270,7 @@ export default function App() {
           isLoading={isLoading}
           isStreaming={isStreaming}
           selectedLocation={selectedLocation}
+          isProcessingLocation={isProcessingLocation}
         />
       </div>
     </div>

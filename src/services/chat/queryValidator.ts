@@ -2,6 +2,7 @@ export interface QueryValidationResult {
   type: 'weather' | 'travel' | 'general';
   location?: string;
   shouldBlock: boolean;
+  isExplicitLocationRequest: boolean;
 }
 
 export function validateQuery(content: string): QueryValidationResult {
@@ -19,25 +20,40 @@ export function validateQuery(content: string): QueryValidationResult {
     
     return {
       type: 'weather',
-      location, // Will be undefined if no valid location found
-      shouldBlock: true
+      location,
+      shouldBlock: true,
+      isExplicitLocationRequest: false
     };
   }
 
-  // Check for travel-related keywords
+  // Check for explicit location requests
+  const explicitLocationKeywords = /show me places|what (?:attractions|places|spots) (?:are there )?(?:to see |to visit )?in|tourist spots in|things to do in|must-visit places in|what can i see in|places to explore in/i;
+  
+  if (explicitLocationKeywords.test(normalizedContent)) {
+    return {
+      type: 'travel',
+      location: extractLocation(normalizedContent),
+      shouldBlock: false,
+      isExplicitLocationRequest: true
+    };
+  }
+
+  // General travel queries
   const travelKeywords = /visit|travel|explore|tour|attraction|place|destination|sight|landmark/i;
   
   if (travelKeywords.test(normalizedContent)) {
     return {
       type: 'travel',
       location: extractLocation(normalizedContent),
-      shouldBlock: false
+      shouldBlock: false,
+      isExplicitLocationRequest: false
     };
   }
 
   return {
     type: 'general',
-    shouldBlock: false
+    shouldBlock: false,
+    isExplicitLocationRequest: false
   };
 }
 

@@ -39,9 +39,9 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
     try {
       map.flyTo(
         [lat, lng],
-        18, // Increased zoom level for location cards
+        17, // Increased zoom level for location cards
         {
-          duration: 2,
+          duration: 3.5, // Increased duration to 3.5 seconds
           easeLinearity: 0.25
         }
       );
@@ -53,7 +53,7 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
       timeoutRef.current = setTimeout(() => {
         setIsAnimating(false);
         console.log('[MapUpdater] Animation complete');
-      }, 2000);
+      }, 3500); // Match timeout with duration
     } catch (error) {
       console.error('[MapUpdater] Error flying to location:', error);
       setIsAnimating(false);
@@ -110,9 +110,9 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
 
         map.flyTo(
           [location.position.lat, location.position.lng],
-          15,
+          13,
           {
-            duration: 2,
+            duration: 3.5, // Increased duration to 3.5 seconds
             easeLinearity: 0.25
           }
         );
@@ -132,7 +132,7 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
         map.flyToBounds(paddedBounds, {
           padding: [50, 50],
           maxZoom: 13,
-          duration: 2,
+          duration: 3.5, // Increased duration to 3.5 seconds
           easeLinearity: 0.25
         });
       }
@@ -144,7 +144,7 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
       timeoutRef.current = setTimeout(() => {
         setIsAnimating(false);
         console.log('[MapUpdater] Animation complete');
-      }, 2000);
+      }, 3500); // Match timeout with duration
     } catch (error) {
       console.error('[MapUpdater] Error updating map bounds:', error);
       setIsAnimating(false);
