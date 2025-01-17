@@ -20,6 +20,8 @@ export const DefaultWeatherWidget: React.FC<DefaultWeatherWidgetProps> = ({
     let mounted = true;
 
     async function fetchWeather() {
+      if (!location) return;
+      
       try {
         setIsLoading(true);
         setError(null);
@@ -57,7 +59,7 @@ export const DefaultWeatherWidget: React.FC<DefaultWeatherWidgetProps> = ({
               <div className="h-8 bg-gray-200 rounded-full w-8"></div>
             </div>
           </div>
-          <div className="grid grid-cols-7 gap-4 mt-6">
+          <div className="grid grid-cols-7 gap-4">
             {[...Array(7)].map((_, i) => (
               <div key={i} className="space-y-2">
                 <div className="h-3 bg-gray-200 rounded"></div>
@@ -79,32 +81,21 @@ export const DefaultWeatherWidget: React.FC<DefaultWeatherWidgetProps> = ({
     );
   }
 
-  // Extract country from location (assuming format "City, Country")
-  const [city, country] = weather.location.split(',').map(s => s.trim());
-
   return (
     <div className={`w-full bg-white rounded-lg p-4 ${className}`}>
-      {/* Header with current weather */}
+      {/* Current Weather */}
       <div className="flex justify-between items-start mb-6">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-800">{city}</h3>
-          <p className="text-sm text-gray-500">{country}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center">
-            <span className="text-2xl font-medium text-gray-900">
-              {Math.round(weather.temperature)}°
-            </span>
-            <WeatherIcon 
-              condition={weather.condition} 
-              size="medium"
-              className="w-8 h-8 ml-1" 
-              animated
-            />
-          </div>
-          <div className="text-sm text-gray-600 hidden sm:block">
-            {weather.condition}
-          </div>
+        <h3 className="text-2xl font-semibold text-gray-800">{location}</h3>
+        <div className="flex items-center">
+          <span className="text-3xl font-medium text-gray-900">
+            {Math.round(weather.temperature)}°
+          </span>
+          <WeatherIcon 
+            condition={weather.condition} 
+            size="medium"
+            className="w-8 h-8 ml-2" 
+            animated
+          />
         </div>
       </div>
 
@@ -114,8 +105,8 @@ export const DefaultWeatherWidget: React.FC<DefaultWeatherWidgetProps> = ({
           7-Day Forecast
         </h4>
         
-        <div className="grid grid-cols-7 gap-2 text-center">
-          {weather.forecast.slice(1, 8).map((day, i) => (
+        <div className="grid grid-cols-7 gap-4">
+          {weather.forecast.map((day, i) => (
             <div key={i} className="flex flex-col items-center space-y-1">
               <div className="text-sm font-medium text-gray-800">
                 {day.time}
@@ -128,17 +119,15 @@ export const DefaultWeatherWidget: React.FC<DefaultWeatherWidgetProps> = ({
                 size="small"
                 className="w-6 h-6 my-1" 
               />
-              <div className="space-y-0.5">
+              <div className="text-sm font-medium text-gray-900">
                 {day.high !== undefined && (
-                  <div className="text-sm font-medium text-gray-900">{day.high}°</div>
+                  <div>{day.high}°</div>
                 )}
                 {day.low !== undefined && (
                   <div className="text-xs text-gray-500">{day.low}°</div>
                 )}
                 {day.high === undefined && (
-                  <div className="text-sm font-medium text-gray-900">
-                    {Math.round(day.temperature)}°
-                  </div>
+                  <div>{Math.round(day.temperature)}°</div>
                 )}
               </div>
             </div>

@@ -1,53 +1,115 @@
 export interface QueryValidationResult {
-    type: 'weather' | 'travel' | 'general';
-    location?: string;
-    shouldBlock: boolean;
-  }
+  type: 'weather' | 'travel' | 'general';
+  location?: string;
+  shouldBlock: boolean;
+}
+
+export function validateQuery(content: string): QueryValidationResult {
+  console.log('[QueryValidator] Processing query:', content);
   
-  export function validateQuery(content: string): QueryValidationResult {
-    // Normalize the content
-    const normalizedContent = content.toLowerCase().trim();
-    
-    // Check for weather-related keywords
-    const weatherKeywords = /weather|temperature|forecast|climate|rain|snow|sunny|cloudy|humidity/i;
-    
-    if (weatherKeywords.test(normalizedContent)) {
-      return {
-        type: 'weather',
-        location: extractLocation(normalizedContent),
-        shouldBlock: true // Block LLM response for weather queries
-      };
-    }
+  // Normalize the content
+  const normalizedContent = content.toLowerCase().trim();
   
-    // Check for travel-related keywords
-    const travelKeywords = /visit|travel|explore|tour|attraction|place|destination|sight|landmark/i;
-    
-    if (travelKeywords.test(normalizedContent)) {
-      return {
-        type: 'travel',
-        location: extractLocation(normalizedContent),
-        shouldBlock: false
-      };
-    }
+  // Check for weather-related keywords
+  const weatherKeywords = /weather|temperature|forecast|climate|rain|snow|sunny|cloudy|humidity/i;
   
+  if (weatherKeywords.test(normalizedContent)) {
+    console.log('[QueryValidator] Weather query detected');
+    const location = extractLocation(normalizedContent);
+    
     return {
-      type: 'general',
+      type: 'weather',
+      location, // Will be undefined if no valid location found
+      shouldBlock: true
+    };
+  }
+
+  // Check for travel-related keywords
+  const travelKeywords = /visit|travel|explore|tour|attraction|place|destination|sight|landmark/i;
+  
+  if (travelKeywords.test(normalizedContent)) {
+    return {
+      type: 'travel',
+      location: extractLocation(normalizedContent),
       shouldBlock: false
     };
   }
+
+  return {
+    type: 'general',
+    shouldBlock: false
+  };
+}
+
+// Common words that should not be considered locations
+const STOP_WORDS = new Set([
+  'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of',
+  'with', 'by', 'from', 'up', 'about', 'into', 'over', 'after',
+  'weather', 'temperature', 'forecast', 'climate', 'like', 'whats', "what's",
+  'show', 'me', 'tell', 'check', 'current', 'now', 'today', 'please',
+  'how', 'is', 'it', 'are', 'can', 'you', 'get', 'give', 'want', 'would',
+  'will', 'should', 'could', 'there'
+]);
+
+function extractLocation(content: string): string | undefined {
+  console.log('[QueryValidator] Extracting location from:', content);
   
-  function extractLocation(content: string): string | undefined {
-    // Try to extract location after "in", "at", or "for"
-    const locationMatch = content.match(/(?:in|at|for)\s+([^.,?!]+)/i);
-    if (locationMatch) {
-      return locationMatch[1].trim();
+  // First try to find location after prepositions
+  const prepositionMatch = content.match(/(?:in|at|for|near|around)\s+([^.,?!]+)/i);
+  if (prepositionMatch) {
+    const locationCandidate = cleanLocationText(prepositionMatch[1]);
+    if (locationCandidate) {
+      console.log('[QueryValidator] Location found after preposition:', locationCandidate);
+      return locationCandidate;
     }
-  
-    // Try to extract location at the start of the query
-    const startMatch = content.match(/^([^.,?!\s]+(?:\s+[^.,?!\s]+){0,2})/);
-    if (startMatch) {
-      return startMatch[1].trim();
-    }
-  
-    return undefined;
   }
+
+  // Then try to find any remaining potential location
+  const words = content.split(/\s+/);
+  const locationWords: string[] = [];
+  
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i].toLowerCase();
+    // Skip if it's a stop word
+    if (STOP_WORDS.has(word)) continue;
+    
+    // If it starts with a capital letter in original text, it's more likely to be a location
+    if (words[i][0]?.toUpperCase() === words[i][0]) {
+      locationWords.push(words[i]);
+      // Include the next word if it's also capitalized (e.g., "New York")
+      if (words[i + 1] && words[i + 1][0]?.toUpperCase() === words[i + 1][0]) {
+        locationWords.push(words[i + 1]);
+        i++; // Skip the next word since we've included it
+      }
+    }
+  }
+
+  if (locationWords.length > 0) {
+    const locationCandidate = cleanLocationText(locationWords.join(' '));
+    if (locationCandidate) {
+      console.log('[QueryValidator] Location found in text:', locationCandidate);
+      return locationCandidate;
+    }
+  }
+
+  console.log('[QueryValidator] No valid location found');
+  return undefined;
+}
+
+function cleanLocationText(text: string): string | undefined {
+  // Remove punctuation and extra spaces
+  const cleaned = text.trim()
+    .replace(/[.,!?;:]/g, '')
+    .replace(/\s+/g, ' ');
+
+  // Split into words and filter out stop words
+  const words = cleaned.split(' ')
+    .filter(word => !STOP_WORDS.has(word.toLowerCase()));
+
+  // Only return if we have at least one word and it's at least 3 chars
+  if (words.length > 0 && words.join(' ').length >= 3) {
+    return words.join(' ');
+  }
+
+  return undefined;
+}

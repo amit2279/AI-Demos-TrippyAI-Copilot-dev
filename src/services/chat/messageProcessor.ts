@@ -8,9 +8,19 @@ interface ProcessedMessage {
 
 export function processStreamingMessage(content: string): ProcessedMessage {
   try {
+    // Log the incoming content for debugging
+    console.log('[MessageProcessor] Processing content length:', content.length);
+ 
+   // Extract JSON and clean text content
+   const jsonRegex = /\{\s*"locations":\s*\[[\s\S]*?\]\s*\}/;
+   const match = content.match(jsonRegex);
+   
+   let textContent = content;
+   let jsonContent = null;
+
     // Extract weather location with improved regex
     let weatherLocation: string | undefined;
-    
+
     // Check for weather-related keywords
     const weatherKeywords = /weather|temperature|forecast|climate/i;
     
@@ -28,35 +38,183 @@ export function processStreamingMessage(content: string): ProcessedMessage {
         }
       }
 
-      // Clean up weather location if found
       if (weatherLocation) {
-        // Remove any trailing descriptive text
-        weatherLocation = weatherLocation
-          .split(/\s+(?:varies|is|has|can|with|and|or|during|throughout)/i)[0]
-          .replace(/\s+/g, ' ')
-          .trim();
+        return {
+          textContent: content,
+          jsonContent: null,
+          weatherLocation
+        };
       }
     }
 
-    // Extract JSON block
-    const jsonMatch = content.match(/{\s*"locations":\s*\[[\s\S]*?\]\s*}/);
-    const jsonContent = jsonMatch ? jsonMatch[0] : null;
+   if (match) {
+     // Remove the image URLs from text content
+     textContent = content.replace(/https?:\/\/[^\s\)]+/g, '');
+     // Clean up any double spaces or empty lines
+     textContent = textContent.replace(/\s+/g, ' ').trim();
+     jsonContent = match[0];
+   }
+ 
+    // Find JSON start
+    const jsonStartMatch = content.match(/{\s*"locations":/);
+    if (!jsonStartMatch) {
+      // Hide any partial JSON-like content from display
+      const cleanContent = content.replace(/{\s*".*$/g, '').trim();
+      return { textContent: cleanContent, jsonContent: null };
+    }
+ 
+    const splitIndex = jsonStartMatch.index!;
+    const potentialJson = content.substring(splitIndex);
     
-    // Get text content without JSON
-    let textContent = jsonMatch 
-      ? content.substring(0, jsonMatch.index).trim()
-      : content.trim();
-
-    // Clean up text content
-    textContent = textContent
-      .replace(/Image:\s*/g, '')
-      .replace(/https?:\/\/[^\s\)]+/g, '')
-      .replace(/\s+/g, ' ')
+    // Validate JSON structure
+    let validJson: string | null = null;
+    let braceCount = 0;
+    let inString = false;
+    let escape = false;
+ 
+    for (let i = 0; i < potentialJson.length; i++) {
+      const char = potentialJson[i];
+      
+      if (!escape && char === '"') {
+        inString = !inString;
+      }
+      escape = !escape && inString && char === '\\';
+      
+      if (!inString) {
+        if (char === '{') braceCount++;
+        if (char === '}') braceCount--;
+        
+        if (braceCount === 0) {
+          validJson = potentialJson.substring(0, i + 1);
+          break;
+        }
+      }
+    }
+ 
+    // Get clean text content by removing any JSON-like content
+    const cleanTextContent = content.substring(0, splitIndex)
+      .replace(/{\s*".*$/g, '') // Remove any partial JSON
       .trim();
-
-    return { textContent, jsonContent, weatherLocation };
+ 
+    // Only return JSON content if it's complete
+    if (validJson) {
+      try {
+        // Verify the JSON is valid
+        JSON.parse(validJson);
+        return {
+          textContent: cleanTextContent,
+          jsonContent: validJson
+        };
+      } catch (e) {
+        console.log('[MessageProcessor] Invalid JSON:', e);
+        return { textContent: cleanTextContent, jsonContent: null };
+      }
+    }
+ 
+    // If JSON is incomplete, return clean text content
+    return { textContent: cleanTextContent, jsonContent: null };
+ 
   } catch (error) {
     console.error('[MessageProcessor] Error processing message:', error);
-    return { textContent: content, jsonContent: null };
+    // Clean any JSON-like content from display
+    const cleanContent = content.replace(/{\s*".*$/g, '').trim();
+    return { textContent: cleanContent, jsonContent: null };
   }
+ }
+
+
+
+
+/* import { Message, Location } from '../../types/chat';
+
+interface ProcessedMessage {
+  textContent: string;
+  jsonContent: string | null;
 }
+
+export function processStreamingMessage(content: string): ProcessedMessage {
+ try {
+   // Log the incoming content for debugging
+   console.log('[MessageProcessor] Processing content length:', content.length);
+
+  // Extract JSON and clean text content
+  const jsonRegex = /\{\s*"locations":\s*\[[\s\S]*?\]\s*\}/;
+  const match = content.match(jsonRegex);
+  
+  let textContent = content;
+  let jsonContent = null;
+
+  if (match) {
+    // Remove the image URLs from text content
+    textContent = content.replace(/https?:\/\/[^\s\)]+/g, '');
+    // Clean up any double spaces or empty lines
+    textContent = textContent.replace(/\s+/g, ' ').trim();
+    jsonContent = match[0];
+  }
+
+   // Find JSON start
+   const jsonStartMatch = content.match(/{\s*"locations":/);
+   if (!jsonStartMatch) {
+     // Hide any partial JSON-like content from display
+     const cleanContent = content.replace(/{\s*".*$/g, '').trim();
+     return { textContent: cleanContent, jsonContent: null };
+   }
+
+   const splitIndex = jsonStartMatch.index!;
+   const potentialJson = content.substring(splitIndex);
+   
+   // Validate JSON structure
+   let validJson: string | null = null;
+   let braceCount = 0;
+   let inString = false;
+   let escape = false;
+
+   for (let i = 0; i < potentialJson.length; i++) {
+     const char = potentialJson[i];
+     
+     if (!escape && char === '"') {
+       inString = !inString;
+     }
+     escape = !escape && inString && char === '\\';
+     
+     if (!inString) {
+       if (char === '{') braceCount++;
+       if (char === '}') braceCount--;
+       
+       if (braceCount === 0) {
+         validJson = potentialJson.substring(0, i + 1);
+         break;
+       }
+     }
+   }
+
+   // Get clean text content by removing any JSON-like content
+   const cleanTextContent = content.substring(0, splitIndex)
+     .replace(/{\s*".*$/g, '') // Remove any partial JSON
+     .trim();
+
+   // Only return JSON content if it's complete
+   if (validJson) {
+     try {
+       // Verify the JSON is valid
+       JSON.parse(validJson);
+       return {
+         textContent: cleanTextContent,
+         jsonContent: validJson
+       };
+     } catch (e) {
+       console.log('[MessageProcessor] Invalid JSON:', e);
+       return { textContent: cleanTextContent, jsonContent: null };
+     }
+   }
+
+   // If JSON is incomplete, return clean text content
+   return { textContent: cleanTextContent, jsonContent: null };
+
+ } catch (error) {
+   console.error('[MessageProcessor] Error processing message:', error);
+   // Clean any JSON-like content from display
+   const cleanContent = content.replace(/{\s*".*$/g, '').trim();
+   return { textContent: cleanContent, jsonContent: null };
+ }
+} */
