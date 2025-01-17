@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Location } from '../types/chat';
+import { LocationCard } from './LocationCard';
 
 interface ImageLocationSearchProps {
   onSubmit: (images: File[]) => void | Promise<void>;
