@@ -1,3 +1,179 @@
+import express from 'express';
+import { Anthropic } from '@anthropic-ai/sdk';
+import { CLAUDE_API_KEY } from './src/config';
+import cors from 'cors';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const app = express();
+
+// Increase payload size limit but keep it reasonable
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+const anthropic = new Anthropic({
+  apiKey: CLAUDE_API_KEY
+});
+
+// System prompts
+const CHAT_SYSTEM_PROMPT = `You are a knowledgeable travel assistant. Provide helpful travel recommendations and information.
+
+CRITICAL - WEATHER QUERY HANDLING:
+For ANY query containing words like "weather", "temperature", "climate", "forecast", or asking about seasons:
+- You MUST ONLY respond with EXACTLY: "Let me check the current weather in [City]..."
+- Extract ONLY the city name from the query
+- DO NOT provide ANY weather information, forecasts, or seasonal details
+- DO NOT include ANY JSON data for weather queries
+- DO NOT mention historical weather patterns
+- DO NOT suggest best times to visit
+- DO NOT include any additional information
+
+For all other location queries, format your response in two parts:
+
+1. Your natural language response, which should:
+   - Use bullet points or numbered lists for better readability
+   - Keep each location description to 1-2 lines maximum
+   - Focus on the unique key features of each place
+   - DO NOT include ANY weather or climate information
+
+2. Followed by a JSON block in this EXACT format:
+
+{ "locations": [
+  {
+    "name": "Location Name",
+    "coordinates": [latitude, longitude],
+    "rating": 4.5,
+    "reviews": 1000,
+    "image": "https://images.unsplash.com/photo-SPECIFIC-PHOTO-ID?w=800&h=600&fit=crop"
+  }
+] }`;
+
+const VISION_SYSTEM_PROMPT = `You are a computer vision expert specializing in identifying landmarks and locations from images. When shown an image:
+
+1. Identify the main landmark, building, or location
+2. Determine its exact geographical coordinates
+3. Provide a brief 1-2 line description
+4. Format your response as valid JSON like this:
+
+{
+  "name": "Exact Location Name",
+  "coordinates": [latitude, longitude],
+  "description": "Brief description"
+}
+
+CRITICAL RULES:
+- ONLY respond with the JSON format above
+- Coordinates MUST be valid numbers
+- If location cannot be identified with high confidence, respond with: {"error": "Location could not be identified"}
+- DO NOT include any explanatory text outside the JSON
+- DO NOT include weather or seasonal information
+- Keep descriptions factual and brief`;
+
+// CORS configuration with proper error handling
+const corsOptions = {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'https://ai-demo-trippy-j8z9fihhr-amits-projects-04ce3c09.vercel.app',
+      'https://ai-demo-trippy.vercel.app'
+    ];
+    
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'],
+  credentials: true,
+  maxAge: 86400
+};
+
+app.use(cors(corsOptions));
+
+// Error handling middleware
+app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('Server error:', err);
+  res.status(500).json({ 
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
+// Combined chat endpoint that handles both text and vision requests
+app.post('/api/chat', async (req, res) => {
+  console.log('Received request:', {
+    type: req.body.messages?.[0]?.content?.[0]?.type || 'text',
+    messageCount: req.body.messages?.length
+  });
+  
+  try {
+    const { messages } = req.body;
+
+    if (!messages || !Array.isArray(messages)) {
+      return res.status(400).json({ error: 'Invalid request format' });
+    }
+
+    // Set up SSE
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    // Determine if this is a vision request
+    const isVisionRequest = messages.some(msg => 
+      Array.isArray(msg.content) && 
+      msg.content.some(c => c.type === 'image')
+    );
+
+    const stream = await anthropic.messages.create({
+      model: 'claude-3-opus-20240229',
+      max_tokens: 4096,
+      messages: messages,
+      stream: true,
+      system: isVisionRequest ? VISION_SYSTEM_PROMPT : CHAT_SYSTEM_PROMPT
+    });
+
+    for await (const chunk of stream) {
+      if (chunk.type === 'content_block_delta') {
+        res.write(`data: ${JSON.stringify({ text: chunk.delta.text })}\n\n`);
+      }
+    }
+
+    res.write('data: [DONE]\n\n');
+    res.end();
+  } catch (error) {
+    console.error('API error:', error);
+    
+    if (error instanceof Error) {
+      if (error.message.includes('413')) {
+        return res.status(413).json({ error: 'Content too large' });
+      }
+      if (error.message.includes('429')) {
+        return res.status(429).json({ error: 'Rate limit exceeded' });
+      }
+      if (error.message.includes('401')) {
+        return res.status(401).json({ error: 'Invalid API key' });
+      }
+    }
+    
+    res.status(500).json({ error: 'Failed to process request' });
+  }
+});
+
+const port = process.env.PORT || 3000;
+
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+  console.log('CORS enabled for:', corsOptions.origin);
+});
+
 /* import express from 'express';
 import { Anthropic } from '@anthropic-ai/sdk';
 import { CLAUDE_API_KEY } from './src/config';
@@ -125,6 +301,7 @@ app.use(cors(corsOptions)); */
 }); */
 // In server.ts
 
+/* 
 import express from 'express';
 import { Anthropic } from '@anthropic-ai/sdk';
 import { CLAUDE_API_KEY } from './src/config';
@@ -317,7 +494,7 @@ app.post('/api/chat', async (req, res) => {
     res.end();
   }
 });
-
+ */
 
 
 

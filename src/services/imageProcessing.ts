@@ -59,8 +59,8 @@ async function resizeImage(file: File): Promise<Blob> {
 }
 
 const VISION_API_URL = process.env.NODE_ENV === 'production'
-  ? '/api/claude/vision'
-  : 'http://localhost:3000/api/claude/vision';
+  ? '/api/chat'
+  : 'http://localhost:3000/api/chat';
 
 export async function processLocationImages(images: File[]): Promise<Location[]> {
   try {
@@ -95,39 +95,110 @@ export async function processLocationImages(images: File[]): Promise<Location[]>
         });
 
         console.log('Sending request to vision API...');
-        
+
+        // Set up SSE for streaming response
         const response = await fetch(VISION_API_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            image: base64Image.split(',')[1],
-            prompt: 'What famous landmark or location is shown in this image? Please provide the exact name, coordinates, and a brief description. Format your response as JSON like this: {"name": "Location Name", "coordinates": [lat, lng], "description": "Brief description"}'
+            messages: [{
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text: 'What famous landmark or location is shown in this image? Please provide the exact name, coordinates, and a brief description.'
+                },
+                {
+                  type: 'image',
+                  source: {
+                    type: 'base64',
+                    media_type: 'image/jpeg',
+                    data: base64Image.split(',')[1]
+                  }
+                }
+              ]
+            }]
           })
         });
 
         if (!response.ok) {
-          throw new Error(`API error: ${response.statusText}`);
+          throw new Error(`API error: ${response.status} ${response.statusText}`);
         }
 
-        const data = await response.json();
-        console.log('Vision API response received');
-        
+        // Handle streaming response
+        const reader = response.body?.getReader();
+        if (!reader) {
+          throw new Error('No response body reader available');
+        }
+
+        let fullResponse = '';
+        const decoder = new TextDecoder();
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(5).trim();
+              if (data === '[DONE]') continue;
+
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.text) {
+                  fullResponse += parsed.text;
+                }
+              } catch (e) {
+                console.warn('Error parsing SSE data:', e);
+              }
+            }
+          }
+        }
+
+        console.log('Full response:', fullResponse);
+
+        // Extract JSON from the full response
+        const jsonMatch = fullResponse.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+          console.warn('No JSON found in response');
+          continue;
+        }
+
         try {
-          const locationData = JSON.parse(data.response);
+          const locationData = JSON.parse(jsonMatch[0]);
+          
+          if (!locationData.name || !locationData.coordinates || !Array.isArray(locationData.coordinates)) {
+            console.warn('Invalid location data format:', locationData);
+            continue;
+          }
+
+          // Validate coordinates
+          const [lat, lng] = locationData.coordinates;
+          if (typeof lat !== 'number' || typeof lng !== 'number' ||
+              lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+            console.warn('Invalid coordinates:', locationData.coordinates);
+            continue;
+          }
+
           locations.push({
-            id: `loc-${Date.now()}-${Math.random()}`,
+            id: `loc-${Date.now()}-${Math.random().toString(36).slice(2)}`,
             name: locationData.name,
             position: {
-              lat: locationData.coordinates[0],
-              lng: locationData.coordinates[1]
+              lat: lat,
+              lng: lng
             },
             rating: 4.5,
             reviews: 10000,
             imageUrl: base64Image,
-            description: locationData.description
+            description: locationData.description || ''
           });
+
+          console.log('Successfully processed location:', locationData.name);
         } catch (parseError) {
           console.error('Error parsing location data:', parseError);
           continue;
@@ -178,6 +249,7 @@ export async function createImageMessage(file: File): Promise<Message> {
     throw error;
   }
 }
+
 /* import { Location, Message } from '../types/chat';
 import { CLAUDE_API_KEY } from '../config';
 
