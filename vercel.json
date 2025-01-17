@@ -1,13 +1,12 @@
 {
   "version": 2,
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
   "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/node"
-    }
+    { "src": "package.json", "use": "@vercel/next" }
   ],
   "routes": [
-    { 
+    {
       "src": "/api/(.*)",
       "dest": "/api/$1",
       "methods": ["GET", "POST", "OPTIONS"],
@@ -17,9 +16,9 @@
         "Access-Control-Allow-Headers": "Content-Type"
       }
     },
-    { 
-      "src": "/(.*)", 
-      "dest": "/index.html" 
+    {
+      "src": "/(.*)",
+      "dest": "/"
     }
   ]
 }
