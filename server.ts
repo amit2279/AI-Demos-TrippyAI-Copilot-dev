@@ -13,18 +13,24 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 const anthropic = new Anthropic({
-  apiKey: CLAUDE_API_KEY
+  apiKey: CLAUDE_API_KEY || process.env.CLAUDE_API_KEY
 });
 
-// CORS configuration with proper error handling
+// Debug logging middleware
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  next();
+});
+
 const corsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
     const allowedOrigins = [
       'http://localhost:5173',
-      'https://ai-demo-trippy-j8z9fihhr-amits-projects-04ce3c09.vercel.app',
+      'https://ai-demo-trippy-ltko5unsy-amits-projects-04ce3c09.vercel.app',
       'https://ai-demo-trippy.vercel.app'
     ];
     
+    console.log('Request origin:', origin);
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -33,43 +39,46 @@ const corsOptions = {
   },
   methods: ['POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type'],
-  credentials: true,
-  maxAge: 86400
+  credentials: true
 };
 
 app.use(cors(corsOptions));
 
-// Improved error handling middleware
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Server error:', err);
-  res.status(500).json({ 
-    error: 'Internal server error',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'An error occurred'
-  });
-});
-
-// Combined chat endpoint with improved error handling
 app.post('/api/chat', async (req, res) => {
+  console.log('[Chat API] Request received:', {
+    messageCount: req.body.messages?.length,
+    hasImage: req.body.messages?.some(m => m.content?.some?.(c => c.type === 'image'))
+  });
+  
   try {
     const { messages } = req.body;
 
     if (!messages || !Array.isArray(messages)) {
+      console.log('[Chat API] Invalid request format');
       return res.status(400).json({ error: 'Invalid request format' });
     }
 
-    // Set up SSE headers
+    // Set up SSE
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
-    // Determine if this is a vision request
     const isVisionRequest = messages.some(msg => 
       Array.isArray(msg.content) && 
       msg.content.some(c => c.type === 'image')
     );
 
     if (isVisionRequest) {
+      console.log('[Chat API] Processing vision request');
       try {
+        // Log the message structure (excluding image data)
+        console.log('[Chat API] Vision message structure:', 
+          JSON.stringify(messages.map(m => ({
+            ...m,
+            content: m.content.map(c => c.type === 'image' ? { type: 'image', size: c.source.data.length } : c)
+          })), null, 2)
+        );
+
         const response = await anthropic.messages.create({
           model: 'claude-3-opus-20240229',
           max_tokens: 4096,
@@ -96,24 +105,24 @@ app.post('/api/chat', async (req, res) => {
           temperature: 0.2
         });
 
-        let responseText = response.content[0].text.trim();
-        
-        // Try to extract JSON from the response
+        console.log('[Chat API] Vision API response received');
+
+        const text = response.content[0].text;
         try {
-          // Find JSON-like content
-          const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+          // Try to parse as JSON or extract JSON
+          const jsonMatch = text.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
-            responseText = jsonMatch[0];
+            const json = JSON.parse(jsonMatch[0]);
+            console.log('[Chat API] Successfully parsed JSON response');
+            res.write(`data: ${JSON.stringify({ text: JSON.stringify(json) })}\n\n`);
+          } else {
+            console.log('[Chat API] No JSON found in response');
+            res.write(`data: ${JSON.stringify({ 
+              text: JSON.stringify({ error: "Location could not be identified" })
+            })}\n\n`);
           }
-          
-          // Validate JSON
-          JSON.parse(responseText);
-          
-          // Send valid JSON response
-          res.write(`data: ${JSON.stringify({ text: responseText })}\n\n`);
         } catch (e) {
-          // If JSON parsing fails, return error JSON
-          console.error('JSON parsing error:', e);
+          console.error('[Chat API] JSON parsing error:', e);
           res.write(`data: ${JSON.stringify({ 
             text: JSON.stringify({ error: "Could not parse location data" })
           })}\n\n`);
@@ -123,9 +132,15 @@ app.post('/api/chat', async (req, res) => {
         res.end();
         return;
       } catch (error) {
-        console.error('Vision API error:', error);
+        console.error('[Chat API] Vision API error:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error('[Chat API] Error details:', errorMessage);
+        
         res.write(`data: ${JSON.stringify({ 
-          text: JSON.stringify({ error: "Failed to process image" })
+          text: JSON.stringify({ 
+            error: "Failed to process image",
+            details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+          })
         })}\n\n`);
         res.write('data: [DONE]\n\n');
         res.end();
@@ -133,7 +148,7 @@ app.post('/api/chat', async (req, res) => {
       }
     }
 
-    // Regular chat request handling
+    console.log('[Chat API] Processing regular chat request');
     const stream = await anthropic.messages.create({
       model: 'claude-3-opus-20240229',
       max_tokens: 4096,
@@ -180,16 +195,19 @@ app.post('/api/chat', async (req, res) => {
     res.write('data: [DONE]\n\n');
     res.end();
   } catch (error) {
-    console.error('API error:', error);
+    console.error('[Chat API] Error:', error);
     
     if (error instanceof Error) {
-      if (error.message.includes('413')) {
+      const errorMessage = error.message;
+      console.error('[Chat API] Error details:', errorMessage);
+      
+      if (errorMessage.includes('413')) {
         return res.status(413).json({ error: 'Content too large' });
       }
-      if (error.message.includes('429')) {
+      if (errorMessage.includes('429')) {
         return res.status(429).json({ error: 'Rate limit exceeded' });
       }
-      if (error.message.includes('401')) {
+      if (errorMessage.includes('401')) {
         return res.status(401).json({ error: 'Invalid API key' });
       }
     }
@@ -202,7 +220,17 @@ const port = process.env.PORT || 3000;
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
+  console.log('Environment:', process.env.NODE_ENV);
+  console.log('API key configured:', !!CLAUDE_API_KEY);
+  console.log('CORS enabled for:', corsOptions.origin);
 });
+
+
+
+
+
+
+
 
 /* 
 import express from 'express';

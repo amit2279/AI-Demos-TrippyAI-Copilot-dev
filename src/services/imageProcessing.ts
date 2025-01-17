@@ -5,6 +5,8 @@ const MAX_DIMENSION = 800; // Maximum dimension
 const JPEG_QUALITY = 0.7; // JPEG quality
 
 async function resizeImage(file: File): Promise<Blob> {
+  console.log(`[Image Processing] Starting resize for ${file.name} (${file.size} bytes)`);
+  
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
@@ -12,6 +14,8 @@ async function resizeImage(file: File): Promise<Blob> {
       
       let { width, height } = img;
       const aspectRatio = width / height;
+      
+      console.log(`[Image Processing] Original dimensions: ${width}x${height}`);
       
       // Calculate new dimensions while maintaining aspect ratio
       if (width > height) {
@@ -25,6 +29,8 @@ async function resizeImage(file: File): Promise<Blob> {
           width = Math.round(height * aspectRatio);
         }
       }
+
+      console.log(`[Image Processing] Resized dimensions: ${width}x${height}`);
 
       const canvas = document.createElement('canvas');
       canvas.width = width;
@@ -46,6 +52,7 @@ async function resizeImage(file: File): Promise<Blob> {
             reject(new Error('Failed to create blob'));
             return;
           }
+          console.log(`[Image Processing] Processed size: ${blob.size} bytes`);
           resolve(blob);
         },
         'image/jpeg',
@@ -53,34 +60,79 @@ async function resizeImage(file: File): Promise<Blob> {
       );
     };
     
-    img.onerror = () => reject(new Error('Failed to load image'));
+    img.onerror = (e) => {
+      console.error('[Image Processing] Error loading image:', e);
+      reject(new Error('Failed to load image'));
+    };
     img.src = URL.createObjectURL(file);
   });
 }
 
-const VISION_API_URL = process.env.NODE_ENV === 'production'
+export async function createImageMessage(file: File): Promise<Message> {
+  console.log(`[Image Processing] Creating image message for ${file.name}`);
+  
+  try {
+    const processedImage = await resizeImage(file);
+    console.log('[Image Processing] Image processed for message');
+    
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result !== 'string') {
+          console.error('[Image Processing] Failed to read processed image');
+          reject(new Error('Failed to read image'));
+          return;
+        }
+        
+        const message: Message = {
+          id: `msg-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          content: '',
+          sender: 'user',
+          timestamp: new Date(),
+          type: 'image',
+          imageUrl: reader.result
+        };
+        
+        console.log('[Image Processing] Image message created successfully');
+        resolve(message);
+      };
+      
+      reader.onerror = (error) => {
+        console.error('[Image Processing] Error reading processed image:', error);
+        reject(new Error('Failed to read processed image'));
+      };
+      
+      reader.readAsDataURL(processedImage);
+    });
+  } catch (error) {
+    console.error('[Image Processing] Error creating image message:', error);
+    throw error;
+  }
+}
+
+
+const API_URL = process.env.NODE_ENV === 'production'
   ? '/api/chat'
   : 'http://localhost:3000/api/chat';
 
 export async function processLocationImages(images: File[]): Promise<Location[]> {
+  console.log(`[Image Processing] Processing ${images.length} images`);
+  
   try {
     const locations: Location[] = [];
     
     for (const image of images) {
       try {
-        console.log('Processing image:', image.name);
+        console.log(`[Image Processing] Processing image: ${image.name} (${image.size} bytes)`);
         
-        // Check initial file size
         if (image.size > 10 * 1024 * 1024) {
-          console.warn(`Image ${image.name} is too large, skipping`);
+          console.warn(`[Image Processing] Image ${image.name} is too large, skipping`);
           continue;
         }
 
-        // Resize image
         const processedImage = await resizeImage(image);
-        console.log('Image resized successfully');
+        console.log('[Image Processing] Image resized successfully');
         
-        // Convert to base64
         const base64Image = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onloadend = () => {
@@ -94,10 +146,9 @@ export async function processLocationImages(images: File[]): Promise<Location[]>
           reader.readAsDataURL(processedImage);
         });
 
-        console.log('Sending request to vision API...');
+        console.log('[Image Processing] Sending request to API...');
 
-        // Set up SSE for streaming response
-        const response = await fetch(VISION_API_URL, {
+        const response = await fetch(API_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -127,6 +178,8 @@ export async function processLocationImages(images: File[]): Promise<Location[]>
           throw new Error(`API error: ${response.status} ${response.statusText}`);
         }
 
+        console.log('[Image Processing] API response received');
+
         // Handle streaming response
         const reader = response.body?.getReader();
         if (!reader) {
@@ -154,18 +207,18 @@ export async function processLocationImages(images: File[]): Promise<Location[]>
                   fullResponse += parsed.text;
                 }
               } catch (e) {
-                console.warn('Error parsing SSE data:', e);
+                console.warn('[Image Processing] Error parsing SSE data:', e);
               }
             }
           }
         }
 
-        console.log('Full response:', fullResponse);
+        console.log('[Image Processing] Full response:', fullResponse);
 
         // Extract JSON from the full response
         const jsonMatch = fullResponse.match(/\{[\s\S]*\}/);
         if (!jsonMatch) {
-          console.warn('No JSON found in response');
+          console.warn('[Image Processing] No JSON found in response');
           continue;
         }
 
@@ -173,7 +226,7 @@ export async function processLocationImages(images: File[]): Promise<Location[]>
           const locationData = JSON.parse(jsonMatch[0]);
           
           if (!locationData.name || !locationData.coordinates || !Array.isArray(locationData.coordinates)) {
-            console.warn('Invalid location data format:', locationData);
+            console.warn('[Image Processing] Invalid location data format:', locationData);
             continue;
           }
 
@@ -181,7 +234,7 @@ export async function processLocationImages(images: File[]): Promise<Location[]>
           const [lat, lng] = locationData.coordinates;
           if (typeof lat !== 'number' || typeof lng !== 'number' ||
               lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-            console.warn('Invalid coordinates:', locationData.coordinates);
+            console.warn('[Image Processing] Invalid coordinates:', locationData.coordinates);
             continue;
           }
 
@@ -198,9 +251,9 @@ export async function processLocationImages(images: File[]): Promise<Location[]>
             description: locationData.description || ''
           });
 
-          console.log('Successfully processed location:', locationData.name);
+          console.log('[Image Processing] Successfully processed location:', locationData.name);
         } catch (parseError) {
-          console.error('Error parsing location data:', parseError);
+          console.error('[Image Processing] Error parsing location data:', parseError);
           continue;
         }
 
@@ -208,44 +261,14 @@ export async function processLocationImages(images: File[]): Promise<Location[]>
         await new Promise(resolve => setTimeout(resolve, 1000));
         
       } catch (error) {
-        console.error(`Error processing image ${image.name}:`, error);
+        console.error(`[Image Processing] Error processing image ${image.name}:`, error);
         continue;
       }
     }
 
     return locations;
   } catch (error) {
-    console.error('Error processing images:', error);
-    throw error;
-  }
-}
-
-export async function createImageMessage(file: File): Promise<Message> {
-  try {
-    const processedImage = await resizeImage(file);
-    
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result !== 'string') {
-          reject(new Error('Failed to read image'));
-          return;
-        }
-        
-        resolve({
-          id: Date.now().toString(),
-          content: '',
-          sender: 'user',
-          timestamp: new Date(),
-          type: 'image',
-          imageUrl: reader.result
-        });
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(processedImage);
-    });
-  } catch (error) {
-    console.error('Error creating image message:', error);
+    console.error('[Image Processing] Error processing images:', error);
     throw error;
   }
 }

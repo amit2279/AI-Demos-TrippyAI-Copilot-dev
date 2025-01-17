@@ -1,9 +1,9 @@
 export interface Message {
   id: string;
   content: string;
-  sender: 'user' | 'bot';
+  sender: 'user' | 'assistant';
   timestamp: Date;
-  type?: 'text' | 'image';
+  type: 'text' | 'image';
   imageUrl?: string;
 }
 
@@ -25,3 +25,4 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
 }
+
