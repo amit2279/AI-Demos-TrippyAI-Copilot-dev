@@ -16,6 +16,10 @@
   ],
   "routes": [
     {
+      "src": "/api/claude/vision",
+      "dest": "server.ts"
+    },
+    {
       "src": "/api/(.*)",
       "dest": "server.ts"
     },

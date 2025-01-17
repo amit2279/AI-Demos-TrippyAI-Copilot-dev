@@ -162,9 +162,10 @@ export const MapPanel: React.FC<MapPanelProps> = ({
           </Marker>
         ))}
       </MapContainer>
+      
       {/* Only show loading overlay when processing locations */}
-      {(isProcessingLocation) && (
-        <div className="absolute inset-0 bg-white/30 backdrop-blur-[1px] z-[400] pointer-events-none flex items-center justify-center">
+      {isProcessingLocation && (
+        <div className="absolute inset-0 bg-white/30 backdrop-blur-[1px] z-[60] pointer-events-none flex items-center justify-center">
           <div className="bg-white/90 rounded-lg px-4 py-2 shadow-lg">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" />

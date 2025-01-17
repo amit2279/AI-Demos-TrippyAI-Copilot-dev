@@ -14,12 +14,12 @@ interface ChatMessageProps {
   selectedLocation: Location | null;
 }
 
-export const ChatMessage: React.FC<ChatMessageProps> = ({ 
+export function ChatMessage({ 
   message,
   isStreaming = false,
   onLocationSelect,
   selectedLocation
-}) => {
+}: ChatMessageProps) {
   const [displayContent, setDisplayContent] = useState('');
   const [locations, setLocations] = useState<Location[]>([]);
   const [showLocations, setShowLocations] = useState(false);
@@ -32,38 +32,58 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       return;
     }
 
-    const { textContent, jsonContent, weatherLocation } = processStreamingMessage(message.content);
-    setDisplayContent(textContent || (isStreaming ? 'Thinking...' : ''));
-    
-    if (weatherLocation) {
-      setWeatherLocation(weatherLocation);
+    // Handle image messages
+    if (message.type === 'image') {
+      setDisplayContent('');
+      return;
     }
 
-    // Process locations if JSON content exists and streaming is complete
-    if (jsonContent && !isStreaming) {
-      try {
-        const data = JSON.parse(jsonContent);
-        if (data.locations && Array.isArray(data.locations)) {
-          const processedLocations = data.locations.map((loc: any, index: number) => ({
-            id: `loc-${Date.now()}-${index}`,
-            name: loc.name,
-            position: {
-              lat: Number(loc.coordinates[0]),
-              lng: Number(loc.coordinates[1])
-            },
-            rating: loc.rating || 4.5,
-            reviews: loc.reviews || 1000,
-            imageUrl: loc.image || `https://source.unsplash.com/800x600/?${encodeURIComponent(loc.name + ' landmark')}`,
-            description: loc.description || ''
-          }));
-          setLocations(processedLocations);
-          setTimeout(() => setShowLocations(true), 500);
-        }
-      } catch (error) {
-        console.error('Error parsing locations:', error);
+    try {
+      const { textContent, jsonContent, weatherLocation } = processStreamingMessage(message.content);
+      setDisplayContent(textContent || (isStreaming ? 'Thinking...' : ''));
+      
+      if (weatherLocation) {
+        setWeatherLocation(weatherLocation);
+        return; // Don't process locations for weather messages
       }
+
+      // Process locations if JSON content exists and streaming is complete
+      if (jsonContent && !isStreaming) {
+        try {
+          const data = JSON.parse(jsonContent);
+          if (data.locations && Array.isArray(data.locations)) {
+            const processedLocations = data.locations
+              .filter(loc => loc && loc.coordinates && Array.isArray(loc.coordinates) && loc.coordinates.length === 2)
+              .map((loc: any, index: number) => ({
+                id: `loc-${Date.now()}-${index}`,
+                name: loc.name,
+                position: {
+                  lat: Number(loc.coordinates[0]),
+                  lng: Number(loc.coordinates[1])
+                },
+                rating: loc.rating || 4.5,
+                reviews: loc.reviews || 1000,
+                imageUrl: loc.image || `https://source.unsplash.com/800x600/?${encodeURIComponent(loc.name + ' landmark')}`,
+                description: loc.description || ''
+              }));
+
+            // Only set locations if we have valid ones
+            if (processedLocations.length > 0) {
+              console.log('[ChatMessage] Setting locations:', processedLocations);
+              setLocations(processedLocations);
+              setTimeout(() => setShowLocations(true), 500);
+            }
+          }
+        } catch (error) {
+          console.error('[ChatMessage] Error parsing locations:', error);
+          setLocations([]);
+        }
+      }
+    } catch (error) {
+      console.error('[ChatMessage] Error processing message:', error);
+      setDisplayContent(message.content);
     }
-  }, [message.content, isStreaming]);
+  }, [message, isStreaming]);
 
   return (
     <div className="space-y-4">
@@ -79,20 +99,35 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         </div>
         
         <div className="max-w-[100%] space-y-4 relative">
-          <div className={`rounded-lg p-3 ${isBot ? 'bg-gray-100' : 'bg-blue-50'}`}>
-            <div className="prose prose-sm max-w-none">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {displayContent}
-              </ReactMarkdown>
-              {isBot && isStreaming && (
-                <span className="inline-block w-2 h-4 ml-1 bg-gray-400 animate-pulse" />
-              )}
+          {/* Image Preview */}
+          {message.type === 'image' && message.imageUrl && (
+            <div className="rounded-lg overflow-hidden max-w-[200px]">
+              <img 
+                src={message.imageUrl} 
+                alt="Uploaded location" 
+                className="w-full h-auto object-cover"
+              />
             </div>
-            <span className="text-xs text-gray-500 mt-2 block">
-              {message.timestamp.toLocaleTimeString()}
-            </span>
-          </div>
+          )}
 
+          {/* Message Content */}
+          {displayContent && (
+            <div className={`rounded-lg p-3 ${isBot ? 'bg-gray-100' : 'bg-blue-50'}`}>
+              <div className="prose prose-sm max-w-none">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {displayContent}
+                </ReactMarkdown>
+                {isBot && isStreaming && (
+                  <span className="inline-block w-2 h-4 ml-1 bg-gray-400 animate-pulse" />
+                )}
+              </div>
+              <span className="text-xs text-gray-500 mt-2 block">
+                {message.timestamp.toLocaleTimeString()}
+              </span>
+            </div>
+          )}
+
+          {/* Weather Widget */}
           {isBot && weatherLocation && !isStreaming && (
             <div className="rounded-lg">
               <DefaultWeatherWidget location={weatherLocation} />
@@ -101,6 +136,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         </div>
       </div>
 
+      {/* Location Cards */}
       {isBot && locations.length > 0 && showLocations && (
         <div className="ml-11 space-y-2">
           {locations.map((location, index) => (
@@ -117,4 +153,4 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       )}
     </div>
   );
-};
+}
