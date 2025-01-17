@@ -54,7 +54,7 @@ const VISION_SYSTEM_PROMPT = `You are a computer vision expert specializing in i
 1. Identify the main landmark, building, or location
 2. Determine its exact geographical coordinates
 3. Provide a brief 1-2 line description
-4. Format your response as valid JSON like this:
+4. Format your response EXACTLY like this, with no additional text:
 
 {
   "name": "Exact Location Name",
@@ -132,12 +132,50 @@ app.post('/api/chat', async (req, res) => {
       msg.content.some(c => c.type === 'image')
     );
 
+    // For vision requests, ensure we get a clean JSON response
+    if (isVisionRequest) {
+      try {
+        const response = await anthropic.messages.create({
+          model: 'claude-3-opus-20240229',
+          max_tokens: 4096,
+          messages: messages,
+          system: VISION_SYSTEM_PROMPT,
+          temperature: 0.2 // Lower temperature for more consistent JSON
+        });
+
+        // Extract and validate JSON from the response
+        const text = response.content[0].text;
+        try {
+          // Ensure it's valid JSON
+          const json = JSON.parse(text);
+          res.write(`data: ${JSON.stringify({ text })}\n\n`);
+        } catch (e) {
+          // If not valid JSON, return error
+          res.write(`data: ${JSON.stringify({ 
+            text: JSON.stringify({ error: "Location could not be identified" })
+          })}\n\n`);
+        }
+        res.write('data: [DONE]\n\n');
+        res.end();
+        return;
+      } catch (error) {
+        console.error('Vision API error:', error);
+        res.write(`data: ${JSON.stringify({ 
+          text: JSON.stringify({ error: "Failed to process image" })
+        })}\n\n`);
+        res.write('data: [DONE]\n\n');
+        res.end();
+        return;
+      }
+    }
+
+    // Regular chat request
     const stream = await anthropic.messages.create({
       model: 'claude-3-opus-20240229',
       max_tokens: 4096,
       messages: messages,
       stream: true,
-      system: isVisionRequest ? VISION_SYSTEM_PROMPT : CHAT_SYSTEM_PROMPT
+      system: CHAT_SYSTEM_PROMPT
     });
 
     for await (const chunk of stream) {
@@ -173,6 +211,7 @@ app.listen(port, () => {
   console.log(`Server running on port ${port}`);
   console.log('CORS enabled for:', corsOptions.origin);
 });
+
 
 /* import express from 'express';
 import { Anthropic } from '@anthropic-ai/sdk';
