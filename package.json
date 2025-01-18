@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "vercel-build": "vite build",
+    "build": "tsc && vite build",
     "preview": "vite preview",
+    "vercel-build": "npm run build",
     "server": "tsx server.ts",
     "start": "node dist/server.js",
     "clean": "rm -rf dist node_modules/.vite",
