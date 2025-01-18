@@ -14,8 +14,6 @@ export function validateApiKey(): void {
 }
 
 export function validateLocation(location: string): string {
-
-  console.log('Location in validateLocation is -------------------------][][][][[][][][][][][]] ',location);
   const cleaned = location?.trim();
   if (!cleaned) {
     throw new Error('Location is required');

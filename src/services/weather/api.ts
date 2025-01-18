@@ -96,7 +96,7 @@ export async function fetchForecastData(location: string): Promise<ForecastRespo
   try {
     validateApiKey();
     const validLocation = validateLocation(location);
-    
+
     // Check cache first
     const cacheKey = `forecast_${validLocation.toLowerCase()}`;
     const cached = cache.get<ForecastResponse>(cacheKey);
@@ -126,6 +126,9 @@ export async function fetchForecastData(location: string): Promise<ForecastRespo
 
     const forecastResponse = await fetchWithRetry(forecastUrl.toString());
     const data = await forecastResponse.json();
+
+    console.log('Foecast response: *******************************|||||', data);
+
 
     cache.set(cacheKey, data);
     return data;
