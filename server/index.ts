@@ -13,12 +13,14 @@ interface City {
 }
 
 interface Location {
+  id: string;
   name: string;
-  coordinates: [number, number];
-  rating: number;
-  reviews: number;
-  description: string;
-  image: string;
+  country: string;
+  position: {
+    lat: number;
+    lng: number;
+  };
+  imageUrl: string;
 }
 
 const CITIES: Record<string, City> = {

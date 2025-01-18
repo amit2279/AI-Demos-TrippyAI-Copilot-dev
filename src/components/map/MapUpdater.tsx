@@ -41,7 +41,7 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
         [lat, lng],
         17, // Increased zoom level for location cards
         {
-          duration: 3.5, // Increased duration to 3.5 seconds
+          duration: 2.5, // Increased duration to 3.5 seconds
           easeLinearity: 0.25
         }
       );
@@ -112,7 +112,7 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
           [location.position.lat, location.position.lng],
           13,
           {
-            duration: 3.5, // Increased duration to 3.5 seconds
+            duration: 2.5, // Increased duration to 3.5 seconds
             easeLinearity: 0.25
           }
         );
@@ -132,7 +132,7 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
         map.flyToBounds(paddedBounds, {
           padding: [50, 50],
           maxZoom: 13,
-          duration: 3.5, // Increased duration to 3.5 seconds
+          duration: 2.5, // Increased duration to 3.5 seconds
           easeLinearity: 0.25
         });
       }

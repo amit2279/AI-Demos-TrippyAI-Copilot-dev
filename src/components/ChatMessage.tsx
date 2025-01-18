@@ -71,7 +71,12 @@ export function ChatMessage({
             if (processedLocations.length > 0) {
               console.log('[ChatMessage] Setting locations:', processedLocations);
               setLocations(processedLocations);
-              setTimeout(() => setShowLocations(true), 500);
+              
+              // Select first location after a delay to ensure map is ready
+              setTimeout(() => {
+                setShowLocations(true);
+                onLocationSelect(processedLocations[0]);
+              }, 500);
             }
           }
         } catch (error) {
@@ -83,7 +88,7 @@ export function ChatMessage({
       console.error('[ChatMessage] Error processing message:', error);
       setDisplayContent(message.content);
     }
-  }, [message, isStreaming]);
+  }, [message, isStreaming, onLocationSelect]);
 
   return (
     <div className="space-y-4">

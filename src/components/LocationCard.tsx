@@ -1,120 +1,161 @@
-import React, { useState, useEffect } from 'react';
-import { MapPin, Star, X } from 'lucide-react';
-import { Location } from '../types/chat';
-import { Shimmer } from './Shimmer';
-import { findPlace } from '../services/places';
+import { Location, Message } from '../types/chat';
 
-interface LocationCardProps {
-  location: Location;
-  onClose: () => void;
-  onLocationSelect?: (location: Location) => void;
-}
-
-export const LocationCard: React.FC<LocationCardProps> = ({ 
-  location, 
-  onClose,
-  onLocationSelect 
-}) => {
-  const [isImageLoaded, setIsImageLoaded] = useState(false);
-  const [isImageError, setIsImageError] = useState(false);
-  const [isMetadataLoaded, setIsMetadataLoaded] = useState(false);
-  const [mapsUrl, setMapsUrl] = useState<string>('');
-
-  useEffect(() => {
-    setIsImageLoaded(false);
-    setIsImageError(false);
-    setIsMetadataLoaded(false);
-    setMapsUrl('');
-
-    // Get Google Maps URL
-    findPlace(location).then(url => {
-      setMapsUrl(url);
-      setIsMetadataLoaded(true);
-    });
-  }, [location]);
-
-  const handleCardClick = () => {
-    if (onLocationSelect) {
-      onLocationSelect(location);
-    }
-  };
-
+function parseCoordinates(coordinates: string | unknown): [number, number] | null {
+  // Add debug logging
+  console.log('[Image Processing] Parsing coordinates:', coordinates);
   
-  if (!isMetadataLoaded) {
-    return (
-      <div className="absolute bottom-4 left-4 right-4 bg-white rounded-lg shadow-lg p-4">
-        <div className="flex gap-4">
-          <Shimmer className="w-24 h-24 rounded-lg" />
-          <div className="flex-1 space-y-2">
-            <Shimmer className="h-6 w-3/4" />
-            <Shimmer className="h-4 w-1/2" />
-            <Shimmer className="h-8 w-32 mt-2" />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div 
-      className="absolute bottom-4 left-4 right-4 bg-white rounded-lg shadow-lg p-4 cursor-pointer hover:bg-blue-600 transition-shadow"
-      onClick={handleCardClick}
-    >
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onClose();
-        }}
-        className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
-      >
-        <X size={20} />
-      </button>
+  try {
+    // Handle string coordinates
+    if (typeof coordinates === 'string') {
+      const cleanCoords = coordinates.replace(/\s+/g, '').replace(/°/g, '');
+      console.log('[Image Processing] Cleaned coordinates:', cleanCoords);
       
-      <div className="flex gap-4">
-        <div className="w-24 h-24 relative">
-          {!isImageLoaded && !isImageError && (
-            <Shimmer className="absolute inset-0 rounded-lg" />
-          )}
-          <img
-            src={location.imageUrl}
-            alt={location.name}
-            className={`w-24 h-24 object-cover rounded-lg transition-opacity duration-300 ${
-              isImageLoaded ? 'opacity-100' : 'opacity-0'
-            }`}
-            onLoad={() => setIsImageLoaded(true)}
-            onError={(e) => {
-              setIsImageError(true);
-              const target = e.target as HTMLImageElement;
-              target.src = `https://source.unsplash.com/800x600/?${encodeURIComponent(location.name + ' landmark')}`;
-            }}
-          />
-        </div>
-        
-        <div className="flex-1">
-          <h3 className="font-semibold text-lg">{location.name}</h3>
-          
-          <div className="flex items-center gap-1 mt-1">
-            <Star className="w-4 h-4 text-yellow-400 fill-current" />
-            <span className="text-sm">
-              {location.rating} ({location.reviews.toLocaleString()} reviews)
-            </span>
-          </div>
-          
-          <a
-            href={mapsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="inline-flex items-center gap-2 mt-2 bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600 transition-colors"
-          >
-            <MapPin size={16} />
-            View on Maps
-          </a>
-        </div>
-      </div>
-    </div>
-  );
+      const parts = cleanCoords.split(',');
+      console.log('[Image Processing] Split parts:', parts);
+      
+      if (parts.length !== 2) return null;
+
+      const latMatch = parts[0].match(/^([\d.-]+)([NS])$/);
+      const lngMatch = parts[1].match(/^([\d.-]+)([EW])$/);
+      console.log('[Image Processing] Matches:', { latMatch, lngMatch });
+
+      if (!latMatch || !lngMatch) return null;
+
+      let lat = parseFloat(latMatch[1]);
+      let lng = parseFloat(lngMatch[1]);
+
+      if (latMatch[2] === 'S') lat *= -1;
+      if (lngMatch[2] === 'W') lng *= -1;
+
+      console.log('[Image Processing] Parsed values:', { lat, lng });
+      
+      if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+        return [lat, lng];
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('[Image Processing] Error parsing coordinates:', error);
+    return null;
+  }
 }
+
+export async function processLocationImages(images: File[]): Promise<Location[]> {
+  console.log(`[Image Processing] Processing ${images.length} images`);
+  
+  try {
+    const locations: Location[] = [];
+    
+    for (const image of images) {
+      try {
+        if (image.size > 10 * 1024 * 1024) continue;
+
+        const processedImage = await resizeImage(image);
+        const base64Image = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            if (typeof reader.result !== 'string') {
+              reject(new Error('Failed to read image'));
+              return;
+            }
+            resolve(reader.result);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(processedImage);
+        });
+
+        // Update the prompt to request specific coordinate format
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [{
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text: 'Identify this location. Respond with ONLY a JSON object in this format: {"name": "Location Name", "country": "Country","description": "Description", "coordinates": "DD.DDDD°N/S, DDD.DDDD°E/W"} (use exactly 4 decimal places)'
+                },
+                {
+                  type: 'image',
+                  source: {
+                    type: 'base64',
+                    media_type: 'image/jpeg',
+                    data: base64Image.split(',')[1]
+                  }
+                }
+              ]
+            }]
+          })
+        });
+
+        if (!response.ok) throw new Error(`API error: ${response.status}`);
+
+        let fullResponse = '';
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error('No response body available');
+
+        const decoder = new TextDecoder();
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(5).trim();
+              if (data === '[DONE]') continue;
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.text) fullResponse += parsed.text;
+              } catch (e) {}
+            }
+          }
+        }
+
+        // Log the raw response
+        console.log('[Image Processing] Raw response:', fullResponse);
+
+        // Parse the JSON response
+        const locationData = JSON.parse(fullResponse);
+        console.log('[Image Processing] Parsed location data:', locationData);
+        
+        if (!locationData.name || !locationData.coordinates || !locationData.country) {
+          console.warn('[Image Processing] Missing required fields:', locationData);
+          continue;
+        }
+
+        const coords = parseCoordinates(locationData.coordinates);
+        if (!coords) {
+          console.warn('[Image Processing] Failed to parse coordinates:', locationData.coordinates);
+          continue;
+        }
+
+        const [lat, lng] = coords;
+        locations.push({
+          id: `loc-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          name: locationData.name,
+          country: locationData.country,
+          position: { lat, lng },
+          imageUrl: base64Image
+        });
+
+      } catch (error) {
+        console.error(`[Image Processing] Error:`, error);
+        continue;
+      }
+    }
+
+    return locations;
+  } catch (error) {
+    console.error('[Image Processing] Error:', error);
+    throw error;
+  }
+}
+
 
 /*import React from 'react';
 import { MapPin, Star, X } from 'lucide-react';

@@ -61,10 +61,9 @@ export default function App() {
       // Add bot response
       const botMessage: Message = {
         id: Date.now().toString(),
-        content: `I found these locations in your ${images.length > 1 ? 'images' : 'image'}:
-${newLocations.map(loc => `- ${loc.name}`).join('\n')}
-
-{ "locations": ${JSON.stringify(newLocations)} }`,
+        content: `This place is ${newLocations.map(loc => 
+          `${loc.name} in ${loc.country}. ${loc.description}`
+        ).join('\n')}\n{ "locations": ${JSON.stringify(newLocations)} }`,
         sender: 'bot',
         timestamp: new Date()
       };

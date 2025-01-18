@@ -4,6 +4,8 @@ const MAX_IMAGE_SIZE = 4 * 1024 * 1024; // 4MB max after processing
 const MAX_DIMENSION = 800; // Maximum dimension
 const JPEG_QUALITY = 0.7; // JPEG quality
 
+
+
 async function resizeImage(file: File): Promise<Blob> {
   console.log(`[Image Processing] Starting resize for ${file.name} (${file.size} bytes)`);
   
@@ -68,9 +70,10 @@ async function resizeImage(file: File): Promise<Blob> {
   });
 }
 
+
+
 export async function createImageMessage(file: File): Promise<Message> {
   console.log(`[Image Processing] Creating image message for ${file.name}`);
-  
   try {
     const processedImage = await resizeImage(file);
     console.log('[Image Processing] Image processed for message');
@@ -110,10 +113,91 @@ export async function createImageMessage(file: File): Promise<Message> {
   }
 }
 
+import { Location, Message } from '../types/chat';
 
-const API_URL = process.env.NODE_ENV === 'production'
-  ? '/api/chat'
-  : 'http://localhost:3000/api/chat';
+function cleanJsonString(jsonString: string): string {
+  try {
+    JSON.parse(jsonString);
+    return jsonString;
+  } catch (e) {
+    // Clean up and format coordinates
+    let cleaned = jsonString
+      .replace(/°/g, '')
+      .replace(/\n/g, ' ')
+      .trim();
+
+    // Add quotes around coordinates
+    cleaned = cleaned.replace(/: (\d+\.\d+[NS], \d+\.\d+[EW])/g, ': "$1"');
+    
+    return cleaned;
+  }
+}
+
+
+function parseCoordinates(coordinates: string | unknown): [number, number] | null {
+  // Add debug logging
+  console.log('[Image Processing] Parsing coordinates:', coordinates);
+  
+  try {
+    // Handle string coordinates
+    if (typeof coordinates === 'string') {
+      const cleanCoords = coordinates.replace(/\s+/g, '').replace(/°/g, '');
+      console.log('[Image Processing] Cleaned coordinates:', cleanCoords);
+      
+      const parts = cleanCoords.split(',');
+      console.log('[Image Processing] Split parts:', parts);
+      
+      if (parts.length !== 2) return null;
+
+      const latMatch = parts[0].match(/^([\d.-]+)([NS])$/);
+      const lngMatch = parts[1].match(/^([\d.-]+)([EW])$/);
+      console.log('[Image Processing] Matches:', { latMatch, lngMatch });
+
+      if (!latMatch || !lngMatch) return null;
+
+      let lat = parseFloat(latMatch[1]);
+      let lng = parseFloat(lngMatch[1]);
+
+      if (latMatch[2] === 'S') lat *= -1;
+      if (lngMatch[2] === 'W') lng *= -1;
+
+      console.log('[Image Processing] Parsed values:', { lat, lng });
+      
+      if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+        return [lat, lng];
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('[Image Processing] Error parsing coordinates:', error);
+    return null;
+  }
+}
+
+const VISION_SYSTEM_PROMPT = `You are a computer vision expert specializing in identifying landmarks and locations from images. When shown an image:
+
+1. Identify the main landmark, building, or location
+2. Determine its exact geographical coordinates
+3. Provide a brief 1-2 line description
+4. Format your response EXACTLY like this, with no additional text:
+
+{
+  "name": "Location Name", 
+  "country": "Country", 
+  "coordinates": "DD.DDDD°N/S, DDD.DDDD°E/W",
+  "description": "Brief description of the location"
+}
+
+CRITICAL RULES:
+- ONLY respond with the JSON format above
+- Coordinates MUST be valid numbers
+- If location cannot be identified with high confidence, respond with: {"error": "I'm not sure about this location. Can you upload another image and we'll try again?"}
+- DO NOT include any explanatory text outside the JSON
+- DO NOT include weather or seasonal information
+- Keep descriptions factual, short and brief`;
+
+//'Identify this location. Respond with ONLY a JSON object in this format: {"name": "Location Name", "country": "Country", "coordinates": "DD.DDDD°N/S, DDD.DDDD°E/W"} (use exactly 4 decimal places)'
 
 export async function processLocationImages(images: File[]): Promise<Location[]> {
   console.log(`[Image Processing] Processing ${images.length} images`);
@@ -123,16 +207,9 @@ export async function processLocationImages(images: File[]): Promise<Location[]>
     
     for (const image of images) {
       try {
-        console.log(`[Image Processing] Processing image: ${image.name} (${image.size} bytes)`);
-        
-        if (image.size > 10 * 1024 * 1024) {
-          console.warn(`[Image Processing] Image ${image.name} is too large, skipping`);
-          continue;
-        }
+        if (image.size > 10 * 1024 * 1024) continue;
 
         const processedImage = await resizeImage(image);
-        console.log('[Image Processing] Image resized successfully');
-        
         const base64Image = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onloadend = () => {
@@ -146,20 +223,17 @@ export async function processLocationImages(images: File[]): Promise<Location[]>
           reader.readAsDataURL(processedImage);
         });
 
-        console.log('[Image Processing] Sending request to API...');
-
+        // Update the prompt to request specific coordinate format
         const response = await fetch(API_URL, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             messages: [{
               role: 'user',
               content: [
                 {
                   type: 'text',
-                  text: 'What famous landmark or location is shown in this image? Please provide the exact name, coordinates, and a brief description.'
+                  text: VISION_SYSTEM_PROMPT
                 },
                 {
                   type: 'image',
@@ -174,21 +248,13 @@ export async function processLocationImages(images: File[]): Promise<Location[]>
           })
         });
 
-        if (!response.ok) {
-          throw new Error(`API error: ${response.status} ${response.statusText}`);
-        }
-
-        console.log('[Image Processing] API response received');
-
-        // Handle streaming response
-        const reader = response.body?.getReader();
-        if (!reader) {
-          throw new Error('No response body reader available');
-        }
+        if (!response.ok) throw new Error(`API error: ${response.status}`);
 
         let fullResponse = '';
-        const decoder = new TextDecoder();
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error('No response body available');
 
+        const decoder = new TextDecoder();
         while (true) {
           const { value, done } = await reader.read();
           if (done) break;
@@ -200,50 +266,85 @@ export async function processLocationImages(images: File[]): Promise<Location[]>
             if (line.startsWith('data: ')) {
               const data = line.slice(5).trim();
               if (data === '[DONE]') continue;
-
               try {
                 const parsed = JSON.parse(data);
-                if (parsed.text) {
-                  fullResponse += parsed.text;
-                }
-              } catch (e) {
-                console.warn('[Image Processing] Error parsing SSE data:', e);
-              }
+                if (parsed.text) fullResponse += parsed.text;
+              } catch (e) {}
             }
           }
         }
 
-        console.log('[Image Processing] Full response:', fullResponse);
+        // Log the raw response
+        console.log('[Image Processing] Raw response:', fullResponse);
 
-        // Extract JSON from the full response
-        const jsonMatch = fullResponse.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
-          console.warn('[Image Processing] No JSON found in response');
+        // Parse the JSON response
+        const locationData = JSON.parse(fullResponse);
+        console.log('[Image Processing] Parsed location data:', locationData);
+        
+        if (!locationData.name || !locationData.coordinates || !locationData.country|| !locationData.description) {
+          console.warn('[Image Processing] Missing required fields:', locationData);
           continue;
         }
 
-        try {
+        const coords = parseCoordinates(locationData.coordinates);
+        if (!coords) {
+          console.warn('[Image Processing] Failed to parse coordinates:', locationData.coordinates);
+          continue;
+        }
+
+        const [lat, lng] = coords;
+        locations.push({
+          id: `loc-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          name: locationData.name,
+          country: locationData.country,
+          position: { lat, lng },
+          imageUrl: base64Image,
+          description: locationData.description
+        });
+        console.log('[Image Processing] locations object:', locations);
+
+
+      } catch (error) {
+        console.error(`[Image Processing] Error:`, error);
+        continue;
+      }
+    }
+
+    return locations;
+  } catch (error) {
+    console.error('[Image Processing] Error:', error);
+    throw error;
+  }
+}
+
+
+
+
+
+
+/*         try {
           const locationData = JSON.parse(jsonMatch[0]);
           
-          if (!locationData.name || !locationData.coordinates || !Array.isArray(locationData.coordinates)) {
-            console.warn('[Image Processing] Invalid location data format:', locationData);
+          if (!locationData.name || !locationData.coordinates) {
+            console.warn('[Image Processing] Missing required fields:', locationData);
             continue;
           }
 
-          // Validate coordinates
-          const [lat, lng] = locationData.coordinates;
-          if (typeof lat !== 'number' || typeof lng !== 'number' ||
-              lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-            console.warn('[Image Processing] Invalid coordinates:', locationData.coordinates);
+          // Parse coordinates using the updated function
+          const coords = parseCoordinates(locationData.coordinates);
+          if (!coords) {
+            console.warn('[Image Processing] Invalid coordinates format:', locationData.coordinates);
             continue;
           }
 
+          const [lat, lng] = coords;
+          
           locations.push({
             id: `loc-${Date.now()}-${Math.random().toString(36).slice(2)}`,
             name: locationData.name,
             position: {
-              lat: lat,
-              lng: lng
+              lat,
+              lng
             },
             rating: 4.5,
             reviews: 10000,
@@ -271,7 +372,13 @@ export async function processLocationImages(images: File[]): Promise<Location[]>
     console.error('[Image Processing] Error processing images:', error);
     throw error;
   }
-}
+} */
+
+const API_URL = process.env.NODE_ENV === 'production'
+  ? '/api/chat'
+  : 'http://localhost:3000/api/chat';
+
+
 
 /* import { Location, Message } from '../types/chat';
 import { CLAUDE_API_KEY } from '../config';

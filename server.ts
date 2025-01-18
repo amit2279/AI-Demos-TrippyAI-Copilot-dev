@@ -132,7 +132,7 @@ app.post('/api/chat', async (req, res) => {
           temperature: 0.2
         });
 
-        console.log('Vision API response received');
+        console.log('Vision API response received with ------ ');
         
         let responseText = response.content[0].text.trim();
         try {
