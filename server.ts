@@ -77,7 +77,7 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Add request logging middleware
 app.use((req, res, next) => {
-  console.log('Request received:', {
+  console.log(' ----------------------------- Request received:', {
     method: req.method,
     path: req.path,
     contentLength: req.headers['content-length'],
@@ -107,7 +107,7 @@ app.post('/api/chat', async (req, res) => {
     }
 
     // Log message structure (excluding actual image data)
-    console.log('Message structure:', messages.map(msg => ({
+    console.log(' --------------------------- Message structure:', messages.map(msg => ({
       ...msg,
       content: Array.isArray(msg.content) 
         ? msg.content.map(c => c.type === 'image' 

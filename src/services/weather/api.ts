@@ -59,6 +59,7 @@ export async function fetchWeatherData(location: string): Promise<WeatherRespons
     if (cached) return cached;
 
     // First get coordinates
+    console.log('Fetching weather data for: ***************************************', validLocation);
     const geoUrl = new URL(`${WEATHER_CONFIG.GEO_URL}/direct`);
     geoUrl.searchParams.append('q', validLocation);
     geoUrl.searchParams.append('limit', '1');

@@ -19,6 +19,8 @@ export const DefaultWeatherWidget: React.FC<DefaultWeatherWidgetProps> = ({
   useEffect(() => {
     let mounted = true;
 
+    console.log('Location in DefaultWeatherWidget is ------------------------- ',location);
+
     async function fetchWeather() {
       if (!location) return;
       

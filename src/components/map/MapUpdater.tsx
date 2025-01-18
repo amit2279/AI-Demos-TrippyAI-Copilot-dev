@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useMap } from 'react-leaflet';
 import { Location } from '../../types/chat';
 import { LatLngBounds, LatLng } from 'leaflet';
+import { cityContext } from '../../services/cityContext';
 
 interface MapUpdaterProps {
   locations: Location[];
@@ -28,6 +29,13 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
       });
       return;
     }
+/*     console.log("selectedLocation ----------------------- ", selectedLocation);
+    const cityName = selectedLocation.name.split(',')[1];
+    cityContext.setCurrentCity(cityName);
+    console.log("cityName ----------------------- ", cityName); */
+    const cityName = selectedLocation.name.split(',')[0].trim();
+    console.log("City updating here 2 ---------------------------------",cityName)
+    cityContext.setCurrentCity(cityName);
 
     console.log('[MapUpdater] Flying to selected location:', {
       name: selectedLocation.name,

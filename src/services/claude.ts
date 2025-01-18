@@ -74,7 +74,7 @@ export async function* getStreamingChatResponse(messages: ChatMessage[]) {
         if (currentChunk) yield currentChunk;
       }
 
-      return; // Successful completion
+      return;
 
     } catch (error) {
       retries++;
@@ -83,18 +83,18 @@ export async function* getStreamingChatResponse(messages: ChatMessage[]) {
       if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
         if (retries < MAX_RETRIES) {
           console.log(`[ChatService] Retrying in ${RETRY_DELAY}ms...`);
-          await wait(RETRY_DELAY * retries); // Exponential backoff
+          await wait(RETRY_DELAY * retries);
           continue;
         }
       }
 
-      // If we've exhausted retries or it's not a connection error, throw
       throw new Error(
         `Chat service error: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
   }
 }
+
 /* export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;

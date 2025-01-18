@@ -13,12 +13,12 @@ export const QuickActionsPanel: React.FC<QuickActionsPanelProps> = ({ onActionCl
       isExpanded ? 'translate-y-0' : 'translate-y-[calc(100%-4px)]'
     }`}>
       {/* Panel Content */}
-      <div className="bg-white shadow-sm border-t border-gray-200">
+      <div className="bg-white shadow-md border-t border-gray-200">
         {/* Dog Ear Toggle */}
-        <div className="absolute -top-4 right-4 z-40">
+        <div className="absolute -top-6 right-4 z-40">
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="bg-white rounded-t-lg px-4 py-1 shadow-md border border-b-0 border-gray-200 hover:bg-gray-50 transition-colors"
+            className="bg-white rounded-t-lg px-4 py-1 border border-b-0 border-gray-200 hover:bg-gray-50 transition-colors"
           >
             {isExpanded ? (
               <ChevronDown size={16} className="text-gray-600" />

@@ -1,4 +1,5 @@
 import { Location, Message } from '../types/chat';
+import { cityContext } from './cityContext';
 
 const MAX_IMAGE_SIZE = 4 * 1024 * 1024; // 4MB max after processing
 const MAX_DIMENSION = 800; // Maximum dimension
@@ -184,6 +185,7 @@ const VISION_SYSTEM_PROMPT = `You are a computer vision expert specializing in i
 
 {
   "name": "Location Name", 
+  "city": "City",
   "country": "Country", 
   "coordinates": "DD.DDDD°N/S, DDD.DDDD°E/W",
   "description": "Brief description of the location"
@@ -279,12 +281,13 @@ export async function processLocationImages(images: File[]): Promise<Location[]>
 
         // Parse the JSON response
         const locationData = JSON.parse(fullResponse);
-        console.log('[Image Processing] Parsed location data:', locationData);
-        
-        if (!locationData.name || !locationData.coordinates || !locationData.country|| !locationData.description) {
+        console.log('[Image Processing] Parsed location data:', locationData.city);
+        if (!locationData.name || !locationData.coordinates || !locationData.country|| !locationData.description || !locationData.city) {
           console.warn('[Image Processing] Missing required fields:', locationData);
           continue;
         }
+        cityContext.setCurrentCity(locationData.city);
+
 
         const coords = parseCoordinates(locationData.coordinates);
         if (!coords) {
@@ -299,9 +302,11 @@ export async function processLocationImages(images: File[]): Promise<Location[]>
           country: locationData.country,
           position: { lat, lng },
           imageUrl: base64Image,
+          city: locationData.city,
           description: locationData.description
         });
-        console.log('[Image Processing] locations object:', locations);
+        cityContext.setCurrentCity(locationData.name);
+        //console.log("[CityContext] Updating current city:", locationData.country);
 
 
       } catch (error) {

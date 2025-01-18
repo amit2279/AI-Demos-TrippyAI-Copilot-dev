@@ -42,8 +42,11 @@ export function ChatMessage({
       const { textContent, jsonContent, weatherLocation } = processStreamingMessage(message.content);
       setDisplayContent(textContent || (isStreaming ? 'Thinking...' : ''));
       
+      
+
       if (weatherLocation) {
         setWeatherLocation(weatherLocation);
+        console.log('Latest weatherLocation is ----- ',weatherLocation);
         return; // Don't process locations for weather messages
       }
 

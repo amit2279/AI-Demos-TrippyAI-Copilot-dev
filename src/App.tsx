@@ -14,7 +14,9 @@ import { validateQuery } from './services/chat/queryValidator';
 export default function App() {
   const initialCity = getRandomCity();
   const initialLocation = getCityAsLocation(initialCity);
-  
+
+  //console.log("Initial City getting called again -----------------------------", initialLocation);
+
   const [messages, setMessages] = useState<Message[]>([{
     id: '1',
     content: generateWelcomeMessage(initialCity),
@@ -32,9 +34,12 @@ export default function App() {
   const [currentWeatherLocation, setCurrentWeatherLocation] = useState<string | null>(null);
   const [isProcessingImages, setIsProcessingImages] = useState(false);
 
-  useEffect(() => {
-    cityContext.setCurrentCity(initialCity.name);
-  }, [initialCity.name]);
+/*   useEffect(() => {
+    console.log("get current city FIRST TIME HERE ONLY-----------------------------", cityContext.getCurrentCity());
+    const cityName = initialCity.name.split(',')[0].trim();
+    cityContext.setCurrentCity(cityName);
+    console.log("City updating here 1 ---------------------------------", cityContext.getCurrentCity());
+  }, [initialCity.name]); */
 
   // Add the missing handleLocationSelect function
   const handleLocationSelect = useCallback((location: Location | null) => {
@@ -44,7 +49,9 @@ export default function App() {
     if (location) {
       // Update city context when a location is selected
       const cityName = location.name.split(',')[0].trim();
+      console.log("City updating here 2 ---------------------------------",cityName)
       cityContext.setCurrentCity(cityName);
+      
     }
   }, []);
 
@@ -67,6 +74,10 @@ export default function App() {
         sender: 'bot',
         timestamp: new Date()
       };
+
+      //const cityName = location.name.split(',')[0].trim();
+      console.log("City updating here 2 ---------------------------------",location)
+      //cityContext.setCurrentCity(cityName);
       
       setMessages(prev => [...prev, botMessage]);
       setLocations(newLocations);
@@ -83,6 +94,8 @@ export default function App() {
     setError(null);
     
     const validation = validateQuery(content);
+
+    console.log("Validation of Query -----------------------------", validation);
     
     const userMessage: Message = {
       id: Date.now().toString(),
