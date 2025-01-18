@@ -5,12 +5,12 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "dev": "vite",
+    "build": "vite build",
     "vercel-build": "vite build",
     "preview": "vite preview",
     "server": "tsx server.ts",
-    "start": "node dist/server.js",
-    "dev": "next dev",
-    "build": "next build"
+    "start": "node dist/server.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.18.0",
