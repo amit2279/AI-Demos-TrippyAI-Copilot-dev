@@ -379,8 +379,9 @@ export async function processLocationImages(images: File[]): Promise<Location[]>
   }
 } */
 
+// Updated API URL configuration
 const API_URL = process.env.NODE_ENV === 'production'
-  ? '/api/chat'
+  ? `${window.location.origin}/api/chat`  // This will use the current domain
   : 'http://localhost:3000/api/chat';
 
 
