@@ -1,0 +1,45 @@
+@keyframes weather-sun {
+  0% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.1) rotate(180deg); }
+  100% { transform: scale(1) rotate(360deg); }
+}
+
+@keyframes weather-cloud {
+  0% { transform: translateX(0); }
+  50% { transform: translateX(10px); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes weather-rain {
+  0% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(10px); opacity: 0.6; }
+}
+
+@keyframes weather-lightning {
+  0% { filter: brightness(1); transform: scale(1); }
+  50% { filter: brightness(1.5); transform: scale(1.1); }
+  100% { filter: brightness(1); transform: scale(1); }
+}
+
+.animate-weather[data-condition='sunny'] {
+  animation: weather-sun 8s infinite linear;
+}
+
+.animate-weather[data-condition='partly-cloudy'],
+.animate-weather[data-condition='cloudy'],
+.animate-weather[data-condition='foggy'] {
+  animation: weather-cloud 3s infinite ease-in-out;
+}
+
+.animate-weather[data-condition='rainy'],
+.animate-weather[data-condition='drizzle'] {
+  animation: weather-rain 1.5s infinite ease-in;
+}
+
+.animate-weather[data-condition='stormy'] {
+  animation: weather-lightning 2s infinite ease-out;
+}
+
+.animate-weather[data-condition='snowy'] {
+  animation: weather-rain 2s infinite ease-in-out;
+}
