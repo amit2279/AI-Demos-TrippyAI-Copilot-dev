@@ -9,7 +9,9 @@
     "vercel-build": "vite build",
     "preview": "vite preview",
     "server": "tsx server.ts",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "clean": "rm -rf dist node_modules/.vite",
+    "start:fresh": "npm run clean && npm install && npm run dev"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.18.0",

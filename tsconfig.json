@@ -1,21 +1,25 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "module": "ES2020",    
-    "moduleResolution": "bundler", // Changed from node16/nodenext
-    "allowImportingTsExtensions": true, // Added to handle .ts/.tsx imports    
-    "outDir": "./dist",
-    "rootDir": "./",
-    "strict": true,
-    "esModuleInterop": true,
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
     "skipLibCheck": true,
-    "allowJs": true,
-    "jsx": "react-jsx",  // Add this line
-    "lib": ["DOM", "DOM.Iterable", "ESNext"],  // Add this line
-    "resolveJsonModule": true,    
-    "isolatedModules": true,  // Add this line
-    "noEmit": true  // Add this line for Vite
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
-  "include": ["src/**/*", "server.ts", "config.ts"],
-  "exclude": ["node_modules"]
+  "include": ["src"],
+  "references": [{ "path": "./tsconfig.node.json" }]
 }
