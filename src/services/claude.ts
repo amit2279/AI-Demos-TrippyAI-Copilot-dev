@@ -1,8 +1,12 @@
 import { ChatMessage } from '../types/chat';
 
-const API_URL = process.env.NODE_ENV === 'production' 
+/* const API_URL = process.env.NODE_ENV === 'production' 
   ? '/api/chat'  // Production URL
-  : 'http://localhost:3000/api/chat'; // Development URL
+  : 'http://localhost:3000/api/chat'; // Development URL */
+
+  export const API_URL = process.env.NODE_ENV === 'production' 
+  ? 'https://ai-demo-trippy-1d763gf6a-amits-projects-04ce3c09.vercel.app/api/chat'
+  : 'http://localhost:3000/api/chat';
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
