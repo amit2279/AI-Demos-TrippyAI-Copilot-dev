@@ -17,6 +17,250 @@ const anthropic = new Anthropic({
   apiKey: CLAUDE_API_KEY || process.env.CLAUDE_API_KEY
 });
 
+// System prompts remain the same
+const CHAT_SYSTEM_PROMPT = `You are a knowledgeable travel assistant. Provide helpful travel recommendations and information.
+
+CRITICAL - WEATHER QUERY HANDLING:
+For ANY query containing words like "weather", "temperature", "climate", "forecast", or asking about seasons:
+- You MUST ONLY respond with EXACTLY: "Let me check the current weather in [City]..."
+- Extract ONLY the city name from the query
+- DO NOT provide ANY weather information, forecasts, or seasonal details
+- DO NOT include ANY JSON data for weather queries
+- DO NOT mention historical weather patterns
+- DO NOT suggest best times to visit
+- DO NOT include any additional information
+
+For all other location queries, format your response in two parts:
+
+1. Your natural language response, which should:
+   - Use bullet points or numbered lists for better readability
+   - Keep each location description to 1-2 lines maximum
+   - Focus on the unique key features of each place
+   - DO NOT include ANY weather or climate information
+
+2. Followed by a JSON block in this EXACT format:
+
+{ "locations": [
+  {
+    "name": "Location Name",
+    "coordinates": [latitude, longitude],
+    "rating": 4.5,
+    "reviews": 1000,
+    "image": "https://images.unsplash.com/photo-SPECIFIC-PHOTO-ID?w=800&h=600&fit=crop"
+  }
+] }`;
+
+// Update the VISION_SYSTEM_PROMPT to prioritize city extraction
+const VISION_SYSTEM_PROMPT = `You are a computer vision expert specializing in identifying landmarks and locations from images. When shown an image:
+
+1. Identify the main landmark, building, or location
+2. Determine the city and country where it's located
+3. Determine its exact geographical coordinates
+4. Provide a brief 1-2 line description
+5. Format your response EXACTLY like this, with no additional text:
+
+{
+  "name": "Exact Location Name",
+  "city": "City Name",
+  "country": "Country",
+  "coordinates": "DD.DDDD°N/S, DDD.DDDD°E/W",
+  "description": "Brief description"
+}
+
+CRITICAL RULES:
+- ALWAYS include the city name separately from the location name
+- City name should be the main city, not a district or neighborhood
+- For monuments/landmarks, use the city they are located in
+- ONLY respond with the JSON format above
+- Coordinates MUST be valid numbers
+- If location cannot be identified with high confidence, respond with: {"error": "Location could not be identified"}
+- DO NOT include any explanatory text outside the JSON
+- DO NOT include weather or seasonal information
+- Keep descriptions factual and brief`;
+
+// Increase payload limits
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Configure CORS with error handling
+const corsOptions = {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'https://ai-demo-trippy.vercel.app'
+    ];
+    
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'],
+  credentials: true,
+  maxAge: 86400
+};
+
+app.use(cors(corsOptions));
+
+// Error handling middleware
+app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('[Server] Error:', err);
+  res.status(500).json({ 
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
+});
+
+app.post('/api/chat', async (req, res) => {
+  try {
+    console.log('[Server] Processing chat request');
+    
+    const { messages } = req.body;
+    if (!messages || !Array.isArray(messages)) {
+      return res.status(400).json({ error: 'Invalid request format' });
+    }
+
+    // Set up SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    const isVisionRequest = messages.some(msg => 
+      Array.isArray(msg.content) && 
+      msg.content.some(c => c.type === 'image')
+    );
+
+    if (isVisionRequest) {
+      console.log('[Server] Processing vision request');
+      try {
+        const response = await anthropic.messages.create({
+          model: 'claude-3-opus-20240229',
+          max_tokens: 4096,
+          messages: messages,
+          system: VISION_SYSTEM_PROMPT,
+          temperature: 0.2
+        });
+
+        console.log('[Server] Vision API response received');
+        
+        let responseText = response.content[0].text.trim();
+        try {
+          // Ensure we have valid JSON
+          const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const json = JSON.parse(jsonMatch[0]);
+            res.write(`data: ${JSON.stringify({ text: JSON.stringify(json) })}\n\n`);
+          } else {
+            throw new Error('No JSON found in response');
+          }
+        } catch (e) {
+          console.error('[Server] JSON parsing error:', e);
+          res.write(`data: ${JSON.stringify({ 
+            text: JSON.stringify({ error: "Failed to parse location data" })
+          })}\n\n`);
+        }
+      } catch (error) {
+        console.error('[Server] Vision API error:', error);
+        res.write(`data: ${JSON.stringify({ 
+          text: JSON.stringify({ 
+            error: "Failed to process image",
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+          })
+        })}\n\n`);
+      }
+      
+      res.write('data: [DONE]\n\n');
+      res.end();
+      return;
+    }
+
+    // Regular chat processing
+    console.log('[Server] Processing regular chat request');
+    try {
+      const stream = await anthropic.messages.create({
+        model: 'claude-3-opus-20240229',
+        max_tokens: 4096,
+        messages,
+        system: CHAT_SYSTEM_PROMPT,
+        stream: true
+      });
+
+      for await (const chunk of stream) {
+        if (chunk.type === 'content_block_delta') {
+          res.write(`data: ${JSON.stringify({ text: chunk.delta.text })}\n\n`);
+        }
+      }
+
+      res.write('data: [DONE]\n\n');
+      res.end();
+    } catch (error) {
+      console.error('[Server] Chat API error:', error);
+      if (!res.headersSent) {
+        res.status(500).json({ 
+          error: 'Chat API error',
+          message: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+      } else {
+        res.write(`data: ${JSON.stringify({ error: 'Chat API error' })}\n\n`);
+        res.write('data: [DONE]\n\n');
+        res.end();
+      }
+    }
+  } catch (error) {
+    console.error('[Server] Error:', error);
+    
+    if (!res.headersSent) {
+      if (error instanceof Error) {
+        if (error.message.includes('413')) {
+          return res.status(413).json({ error: 'Content too large' });
+        }
+        if (error.message.includes('429')) {
+          return res.status(429).json({ error: 'Rate limit exceeded' });
+        }
+        if (error.message.includes('401')) {
+          return res.status(401).json({ error: 'Invalid API key' });
+        }
+      }
+      
+      res.status(500).json({ error: 'Failed to process request' });
+    } else {
+      res.write(`data: ${JSON.stringify({ error: 'Internal server error' })}\n\n`);
+      res.write('data: [DONE]\n\n');
+      res.end();
+    }
+  }
+});
+
+const port = process.env.PORT || 3000;
+
+app.listen(port, () => {
+  console.log(`[Server] Running on port ${port}`);
+  console.log('[Server] Environment:', process.env.NODE_ENV);
+  console.log('[Server] API key configured:', !!anthropic.apiKey);
+});
+
+
+/* import express from 'express';
+import { Anthropic } from '@anthropic-ai/sdk';
+import cors from 'cors';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const app = express();
+
+// Get API key from environment variable
+const apiKey = process.env.CLAUDE_API_KEY;
+
+if (!apiKey) {
+  throw new Error('CLAUDE_API_KEY environment variable is not set');
+}
+
+const anthropic = new Anthropic({
+  apiKey: apiKey
+});
 
 // System prompts
 const CHAT_SYSTEM_PROMPT = `You are a knowledgeable travel assistant. Provide helpful travel recommendations and information.
@@ -72,49 +316,35 @@ CRITICAL RULES:
 - DO NOT include weather or seasonal information
 - Keep descriptions factual and brief`;
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+// Updated CORS configuration
+app.use(cors({
+  origin: ['http://localhost:5173', 'https://ai-demo-trippy-1d763gf6a-amits-projects-04ce3c09.vercel.app'],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'],
+  credentials: false // Changed to false since we're not using credentials
+}));
 
-// Add request logging middleware
+// Increase payload limit
+app.use(express.json({ limit: '10mb' }));
+
+// Add request logging
 app.use((req, res, next) => {
-  console.log(' ----------------------------- Request received:', {
-    method: req.method,
-    path: req.path,
-    contentLength: req.headers['content-length'],
-    contentType: req.headers['content-type'],
-  });
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
   next();
 });
 
-app.use(cors({
-  origin: [
-    'https://ai-demo-trippy-oq4pauw7g-amits-projects-04ce3c09.vercel.app',
-    'http://localhost:5173'
-  ],
-  methods: ['POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type'],
-  credentials: true
-}));
-
 app.post('/api/chat', async (req, res) => {
   try {
-    console.log('Processing /api/chat request');
-    
     const { messages } = req.body;
+
     if (!messages || !Array.isArray(messages)) {
-      console.error('Invalid request format:', req.body);
       return res.status(400).json({ error: 'Invalid request format' });
     }
 
-    // Log message structure (excluding actual image data)
-    console.log(' --------------------------- Message structure:', messages.map(msg => ({
-      ...msg,
-      content: Array.isArray(msg.content) 
-        ? msg.content.map(c => c.type === 'image' 
-            ? { type: 'image', dataSize: c.source?.data?.length || 0 }
-            : c)
-        : msg.content
-    })));
+    // Set up SSE
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
 
     const isVisionRequest = messages.some(msg => 
       Array.isArray(msg.content) && 
@@ -122,57 +352,243 @@ app.post('/api/chat', async (req, res) => {
     );
 
     if (isVisionRequest) {
-      console.log('Processing vision request');
+      const response = await anthropic.messages.create({
+        model: 'claude-3-opus-20240229',
+        max_tokens: 4096,
+        messages,
+        system: VISION_SYSTEM_PROMPT,
+        temperature: 0.2
+      });
+
+      const text = response.content[0].text;
+      res.write(`data: ${JSON.stringify({ text })}\n\n`);
+    } else {
+      const stream = await anthropic.messages.create({
+        model: 'claude-3-opus-20240229',
+        max_tokens: 4096,
+        messages,
+        stream: true,
+        system: CHAT_SYSTEM_PROMPT
+      });
+
+      for await (const chunk of stream) {
+        if (chunk.type === 'content_block_delta') {
+          res.write(`data: ${JSON.stringify({ text: chunk.delta.text })}\n\n`);
+        }
+      }
+    }
+
+    res.write('data: [DONE]\n\n');
+    res.end();
+  } catch (error) {
+    console.error('API error:', error);
+    res.status(500).json({ 
+      error: 'Failed to process request',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+const port = process.env.PORT || 3000;
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+  console.log('API key configured:', !!apiKey);
+});
+ */
+
+/* import express from 'express';
+import { Anthropic } from '@anthropic-ai/sdk';
+import { CLAUDE_API_KEY } from './src/config';
+import cors from 'cors';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const app = express();
+
+// Increase payload size limit but keep it reasonable
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+// Validate API key immediately
+if (!CLAUDE_API_KEY && !process.env.CLAUDE_API_KEY) {
+  throw new Error('Missing CLAUDE_API_KEY environment variable');
+}
+
+const anthropic = new Anthropic({
+  apiKey: CLAUDE_API_KEY || process.env.CLAUDE_API_KEY
+});
+
+// Configure CORS
+app.use(cors({
+  origin: ['http://localhost:5173', 'https://ai-demo-trippy-1d763gf6a-amits-projects-04ce3c09.vercel.app'],
+  methods: ['POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
+
+app.use(express.json({ limit: '10mb' }));
+
+// System prompts
+const CHAT_SYSTEM_PROMPT = `You are a knowledgeable travel assistant. Provide helpful travel recommendations and information.
+
+CRITICAL - WEATHER QUERY HANDLING:
+For ANY query containing words like "weather", "temperature", "climate", "forecast", or asking about seasons:
+- You MUST ONLY respond with EXACTLY: "Let me check the current weather in [City]..."
+- Extract ONLY the city name from the query
+- DO NOT provide ANY weather information, forecasts, or seasonal details
+- DO NOT include ANY JSON data for weather queries
+- DO NOT mention historical weather patterns
+- DO NOT suggest best times to visit
+- DO NOT include any additional information
+
+For all other location queries, format your response in two parts:
+
+1. Your natural language response, which should:
+   - Use bullet points or numbered lists for better readability
+   - Keep each location description to 1-2 lines maximum
+   - Focus on the unique key features of each place
+   - DO NOT include ANY weather or climate information
+
+2. Followed by a JSON block in this EXACT format:
+
+{ "locations": [
+  {
+    "name": "Location Name",
+    "coordinates": [latitude, longitude],
+    "rating": 4.5,
+    "reviews": 1000,
+    "image": "https://images.unsplash.com/photo-SPECIFIC-PHOTO-ID?w=800&h=600&fit=crop"
+  }
+] }`;
+
+const VISION_SYSTEM_PROMPT = `You are a computer vision expert specializing in identifying landmarks and locations from images. When shown an image:
+
+1. Identify the main landmark, building, or location
+2. Determine its exact geographical coordinates
+3. Provide a brief 1-2 line description
+4. Format your response EXACTLY like this, with no additional text:
+
+{
+  "name": "Exact Location Name",
+  "coordinates": [latitude, longitude],
+  "description": "Brief description"
+}
+
+CRITICAL RULES:
+- ONLY respond with the JSON format above
+- Coordinates MUST be valid numbers
+- If location cannot be identified with high confidence, respond with: {"error": "Location could not be identified"}
+- DO NOT include any explanatory text outside the JSON
+- DO NOT include weather or seasonal information
+- Keep descriptions factual and brief`;
+
+// CORS configuration with proper error handling
+const corsOptions = {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'https://ai-demo-trippy-j8z9fihhr-amits-projects-04ce3c09.vercel.app',
+      'https://ai-demo-trippy.vercel.app'
+    ];
+    
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'],
+  credentials: true,
+  maxAge: 86400
+};
+
+app.use(cors(corsOptions));
+
+// Error handling middleware
+app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('Server error:', err);
+  res.status(500).json({ 
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
+// Combined chat endpoint that handles both text and vision requests
+app.post('/api/chat', async (req, res) => {
+  console.log('Received request:', {
+    type: req.body.messages?.[0]?.content?.[0]?.type || 'text',
+    messageCount: req.body.messages?.length
+  });
+  
+  try {
+    const { messages } = req.body;
+
+    if (!messages || !Array.isArray(messages)) {
+      return res.status(400).json({ error: 'Invalid request format' });
+    }
+
+    // Set up SSE
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    // Determine if this is a vision request
+    const isVisionRequest = messages.some(msg => 
+      Array.isArray(msg.content) && 
+      msg.content.some(c => c.type === 'image')
+    );
+
+    // For vision requests, ensure we get a clean JSON response
+    if (isVisionRequest) {
       try {
         const response = await anthropic.messages.create({
           model: 'claude-3-opus-20240229',
           max_tokens: 4096,
           messages: messages,
           system: VISION_SYSTEM_PROMPT,
-          temperature: 0.2
+          temperature: 0.2 // Lower temperature for more consistent JSON
         });
 
-        console.log('Vision API response received with ------ ');
-        
-        let responseText = response.content[0].text.trim();
+        // Extract and validate JSON from the response
+        const text = response.content[0].text;
         try {
-          // Ensure we have valid JSON
-          const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            const json = JSON.parse(jsonMatch[0]);
-            res.write(`data: ${JSON.stringify({ text: JSON.stringify(json) })}\n\n`);
-          } else {
-            throw new Error('No JSON found in response');
-          }
+          // Ensure it's valid JSON
+          const json = JSON.parse(text);
+          res.write(`data: ${JSON.stringify({ text })}\n\n`);
         } catch (e) {
-          console.error('JSON parsing error:', e);
+          // If not valid JSON, return error
           res.write(`data: ${JSON.stringify({ 
-            text: JSON.stringify({ error: "Failed to parse location data" })
+            text: JSON.stringify({ error: "Location could not be identified" })
           })}\n\n`);
         }
+        res.write('data: [DONE]\n\n');
+        res.end();
+        return;
       } catch (error) {
         console.error('Vision API error:', error);
         res.write(`data: ${JSON.stringify({ 
-          text: JSON.stringify({ 
-            error: "Failed to process image",
-            details: process.env.NODE_ENV === 'development' ? error.message : undefined
-          })
+          text: JSON.stringify({ error: "Failed to process image" })
         })}\n\n`);
+        res.write('data: [DONE]\n\n');
+        res.end();
+        return;
       }
-      
-      res.write('data: [DONE]\n\n');
-      res.end();
-      return;
     }
 
-    // Regular chat processing
-    console.log('Processing regular chat request');
+    // Regular chat request
     const stream = await anthropic.messages.create({
       model: 'claude-3-opus-20240229',
       max_tokens: 4096,
-      messages,
-      system: CHAT_SYSTEM_PROMPT,
-      stream: true
+      messages: messages,
+      stream: true,
+      system: CHAT_SYSTEM_PROMPT
     });
 
     for await (const chunk of stream) {
@@ -183,17 +599,22 @@ app.post('/api/chat', async (req, res) => {
 
     res.write('data: [DONE]\n\n');
     res.end();
-
   } catch (error) {
-    console.error('Server error:', error);
+    console.error('API error:', error);
     
-    // Send detailed error response
-    res.status(500).json({
-      error: 'Failed to process request',
-      message: error instanceof Error ? error.message : 'Unknown error',
-      type: error instanceof Error ? error.constructor.name : 'Unknown',
-      timestamp: new Date().toISOString()
-    });
+    if (error instanceof Error) {
+      if (error.message.includes('413')) {
+        return res.status(413).json({ error: 'Content too large' });
+      }
+      if (error.message.includes('429')) {
+        return res.status(429).json({ error: 'Rate limit exceeded' });
+      }
+      if (error.message.includes('401')) {
+        return res.status(401).json({ error: 'Invalid API key' });
+      }
+    }
+    
+    res.status(500).json({ error: 'Failed to process request' });
   }
 });
 
@@ -201,14 +622,9 @@ const port = process.env.PORT || 3000;
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
-  console.log('Environment:', process.env.NODE_ENV);
-  console.log('API key configured:', !!anthropic.apiKey);
+  console.log('CORS enabled for:', corsOptions.origin);
 });
-
-
-
-
-
+ */
 
 /* 
 import express from 'express';

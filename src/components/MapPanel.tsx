@@ -76,13 +76,13 @@ export const MapPanel: React.FC<MapPanelProps> = ({
   const mapRef = useRef<L.Map | null>(null);
 
   // Log location updates for debugging
-  console.log('[MapPanel] Locations updated:', {
+  /* console.log('[MapPanel] Locations updated:', {
     count: locations.length,
     locations: locations.map(loc => ({
       name: loc.name,
       coordinates: [loc.position.lat, loc.position.lng]
     }))
-  });
+  } );*/
 
   // Validate coordinates before passing to markers
   const validLocations = locations.filter(loc => 
@@ -95,7 +95,7 @@ export const MapPanel: React.FC<MapPanelProps> = ({
     loc.position.lng <= 180
   );
 
-  console.log('[MapPanel] Valid locations for markers:', validLocations.length);
+  //console.log('[MapPanel] Valid locations for markers:', validLocations.length);
 
   const setMarkerRef = (id: string, ref: any) => {
     if (ref) {
