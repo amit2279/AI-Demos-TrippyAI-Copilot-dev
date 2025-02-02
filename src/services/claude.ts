@@ -1,55 +1,45 @@
 import { ChatMessage } from '../types/chat';
 
-
-
-//const API_URL = process.env.VITE_API_URL || 'http://localhost:3000';
-
-/* export async function sendMessage(messages: any[]) {
-  try {
-    const response = await fetch(`${API_URL}/api/chat`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      mode: 'cors', // Explicitly set CORS mode
-      body: JSON.stringify({ messages })
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    return response;
-  } catch (error) {
-    console.error('API call failed:', error);
-    throw error;
-  }
-} */
-
-
-
-
-
-
-const API_URL = process.env.VITE_API_URL || 'http://localhost:3000';
-/* export const API_URL = process.env.NODE_ENV === 'production' 
+export const API_URL = process.env.NODE_ENV === 'production' 
   ? 'https://ai-demo-trippy.vercel.app/api/chat'
-  : '/api/chat'; */
+  : '/api/chat';
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
 const TOKEN_LIMIT = 100000;
+const MAX_MESSAGE_HISTORY = 10;
+const MAX_TOKENS_PER_MESSAGE = 8000;
 
 async function wait(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function estimateTokenCount(text: string): number {
-  // Rough estimation: ~4 characters per token
   return Math.ceil(text.length / 4);
 }
 
-// New function to analyze message content
+function pruneMessageHistory(messages: ChatMessage[]): ChatMessage[] {
+  // Keep only the last MAX_MESSAGE_HISTORY messages
+  if (messages.length > MAX_MESSAGE_HISTORY) {
+    console.log('[ChatService] Pruning message history:', {
+      before: messages.length,
+      after: MAX_MESSAGE_HISTORY
+    });
+    return messages.slice(-MAX_MESSAGE_HISTORY);
+  }
+  return messages;
+}
+
+function deduplicateMessages(messages: ChatMessage[]): ChatMessage[] {
+  const seen = new Set<string>();
+  return messages.filter(msg => {
+    const key = `${msg.role}:${msg.content}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function analyzeMessageContent(content: any): { tokens: number; type: string } {
   if (typeof content === 'string') {
     return {
@@ -68,7 +58,7 @@ function analyzeMessageContent(content: any): { tokens: number; type: string } {
       }
       if (item.type === 'image') {
         return {
-          tokens: 1000, // Base cost for image
+          tokens: 1000,
           type: 'image'
         };
       }
@@ -95,7 +85,6 @@ function validateMessageSize(messages: ChatMessage[]): void {
 
   const totalTokens = messageAnalysis.reduce((sum, msg) => sum + msg.tokens, 0);
   
-  // Log detailed token analysis
   console.log('[ChatService] Token analysis:', {
     total: totalTokens,
     breakdown: messageAnalysis.map(msg => ({
@@ -106,20 +95,36 @@ function validateMessageSize(messages: ChatMessage[]): void {
     timestamp: new Date().toISOString()
   });
 
+  // Check individual message sizes
+  const largeMessages = messageAnalysis.filter(msg => msg.tokens > MAX_TOKENS_PER_MESSAGE);
+  if (largeMessages.length > 0) {
+    throw new Error(`Message(s) exceed maximum token limit of ${MAX_TOKENS_PER_MESSAGE}`);
+  }
+
   if (totalTokens > TOKEN_LIMIT) {
-    throw new Error(`Token limit exceeded: ${totalTokens} tokens (limit: ${TOKEN_LIMIT})`);
+    throw new Error(`Total token limit exceeded: ${totalTokens} tokens (limit: ${TOKEN_LIMIT})`);
   }
 }
+
 export async function* getStreamingChatResponse(messages: ChatMessage[]) {
   let retries = 0;
+  const processedMessages = new Set<string>();
 
   while (retries < MAX_RETRIES) {
     try {
-      // Validate and log message size
-      validateMessageSize(messages);
+      // Clean up messages
+      let cleanedMessages = pruneMessageHistory(messages);
+      cleanedMessages = deduplicateMessages(cleanedMessages);
 
-      // Filter out messages with empty content
-      const validMessages = messages.filter(msg => {
+      // Validate message sizes
+      validateMessageSize(cleanedMessages);
+
+      // Filter out empty messages
+      const validMessages = cleanedMessages.filter(msg => {
+        const msgKey = `${msg.role}:${msg.content}`;
+        if (processedMessages.has(msgKey)) return false;
+        processedMessages.add(msgKey);
+
         if (Array.isArray(msg.content)) {
           return msg.content.length > 0 && msg.content.every(c => 
             (c.type === 'text' && c.text?.trim()) || 
@@ -129,45 +134,25 @@ export async function* getStreamingChatResponse(messages: ChatMessage[]) {
         return msg.content?.trim();
       });
 
-      // Log request details with token counts
-      console.log('[ChatService] Preparing request:', {
+      console.log('[ChatService] Request details:', {
         messageCount: validMessages.length,
         lastMessage: validMessages[validMessages.length - 1]?.content,
         timestamp: new Date().toISOString()
       });
 
-      // Get API URL from environment
-      const API_URL = import.meta.env.VITE_API_URL ? 
-        `${import.meta.env.VITE_API_URL}/api/chat` : 
-        'http://localhost:3000/api/chat';
-
-      console.log('[ChatService] Using API URL:', API_URL);
-
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'text/event-stream',
+          'Content-Type': 'application/json'
         },
-        mode: 'cors', // Explicitly set CORS mode
         body: JSON.stringify({ messages: validMessages })
       });
 
-      // Handle non-200 responses
       if (!response.ok) {
-        let errorMessage = `HTTP error! status: ${response.status}`;
-        try {
-          const errorData = await response.json();
-          errorMessage += ` - ${errorData.error || errorData.message || 'Unknown error'}`;
-        } catch {
-          // If response isn't JSON, try to get text
-          const errorText = await response.text();
-          errorMessage += errorText ? ` - ${errorText}` : '';
-        }
-        throw new Error(errorMessage);
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
       }
 
-      // Validate response body
       if (!response.body) {
         throw new Error('Response body is null');
       }
@@ -176,43 +161,29 @@ export async function* getStreamingChatResponse(messages: ChatMessage[]) {
       const decoder = new TextDecoder();
       let buffer = '';
 
-      try {
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
 
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
 
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(5).trim();
-              
-              if (data === '[DONE]') {
-                console.log('[ChatService] Stream completed successfully');
-                return;
-              }
-              
-              try {
-                const parsed = JSON.parse(data);
-                if (parsed.error) {
-                  console.error('[ChatService] Stream error:', parsed.error);
-                  throw new Error(parsed.error);
-                }
-                if (parsed.text) yield parsed.text;
-              } catch (e) {
-                console.warn('[ChatService] Parse error:', e);
-                if (e instanceof Error && e.message !== 'Unexpected end of JSON input') {
-                  throw e; // Re-throw if it's not a partial JSON error
-                }
-              }
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(5).trim();
+            
+            if (data === '[DONE]') return;
+            
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.error) throw new Error(parsed.error);
+              if (parsed.text) yield parsed.text;
+            } catch (e) {
+              console.warn('[ChatService] Parse error:', e);
             }
           }
         }
-      } finally {
-        // Always close the reader if it exists
-        reader.cancel();
       }
 
       return;
@@ -221,32 +192,21 @@ export async function* getStreamingChatResponse(messages: ChatMessage[]) {
       retries++;
       console.error(`[ChatService] Attempt ${retries} failed:`, error);
 
-      // Handle specific error types
-      if (
-        error instanceof TypeError && 
-        (error.message.includes('Failed to fetch') || error.message.includes('NetworkError'))
-      ) {
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
         if (retries < MAX_RETRIES) {
-          const delay = RETRY_DELAY * Math.pow(2, retries - 1); // Exponential backoff
-          console.log(`[ChatService] Retrying in ${delay}ms...`);
-          await wait(delay);
+          await wait(RETRY_DELAY * retries);
           continue;
         }
       }
 
-      // Enhanced error reporting
-      let errorMessage = 'Chat service error: ';
-      if (error instanceof Error) {
-        errorMessage += error.message;
-        if (error.cause) errorMessage += ` (Cause: ${error.cause})`;
-      } else {
-        errorMessage += 'Unknown error';
-      }
-
-      throw new Error(errorMessage);
+      throw new Error(
+        `Chat service error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 }
+
+
 
 /* export async function* getStreamingChatResponse(messages: ChatMessage[]) {
   let retries = 0;
@@ -352,7 +312,7 @@ export async function* getStreamingChatResponse(messages: ChatMessage[]) {
 
 /* import { ChatMessage } from '../types/chat';
 
-export const API_URL = process.env.NODE_ENV === 'production' 
+export const API_URL = import.meta.env.NODE_ENV === 'production' 
   ? 'https://ai-demo-trippy.vercel.app/api/chat'
   : '/api/chat';
 

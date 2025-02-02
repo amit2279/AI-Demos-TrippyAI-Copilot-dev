@@ -4,32 +4,28 @@
     {
       "src": "server.ts",
       "use": "@vercel/node"
-    },
+    }
+  ],
+  "headers": [
     {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": { "distDir": "dist" }
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "X-Requested-With, Content-Type, Accept" },
+        { "key": "Access-Control-Max-Age", "value": "86400" }
+      ]
     }
   ],
   "routes": [
     {
-      "src": "/api/(.*)",
-      "methods": ["OPTIONS", "POST"],
-      "headers": {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "OPTIONS, POST",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
-        "Access-Control-Max-Age": "86400"
-      },
+      "src": "/api/chat",
+      "methods": ["POST", "OPTIONS"],
       "dest": "server.ts"
     },
     {
-      "handle": "filesystem"
-    },
-    {
       "src": "/(.*)",
-      "dest": "dist/$1",
-      "continue": true
+      "dest": "server.ts"
     }
   ]
 }

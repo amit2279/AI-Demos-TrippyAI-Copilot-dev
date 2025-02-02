@@ -118,9 +118,66 @@ const corsOptions = {
   preflightContinue: false,
   optionsSuccessStatus: 204
 };
-
 app.use(cors(corsOptions)); */
+
+// Update in server.ts
+
+// CORS configuration
 const corsOptions = {
+  origin: '*', // Allow all origins
+  methods: 'GET,POST,OPTIONS',
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 200
+};
+
+// Apply CORS middleware
+app.use(cors(corsOptions));
+
+// Add explicit OPTIONS handler for preflight requests
+app.options('*', cors(corsOptions));
+
+// Add GET handler for /api/chat to explain usage
+app.get('/api/chat', (req, res) => {
+  res.status(405).json({
+    error: 'Method not allowed',
+    message: 'This endpoint only accepts POST requests for chat interactions',
+    usage: {
+      method: 'POST',
+      contentType: 'application/json',
+      body: {
+        messages: [
+          {
+            role: 'user',
+            content: 'Your message here'
+          }
+        ]
+      }
+    }
+  });
+});
+
+/* // Your existing POST handler
+app.post('/api/chat', async (req, res) => {
+  // ... your existing code ...
+}); */
+
+// Root route handler
+app.get('/', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    endpoints: {
+      chat: {
+        url: '/api/chat',
+        method: 'POST',
+        description: 'Chat endpoint for message interactions'
+      }
+    }
+  });
+});
+
+
+
+/* const corsOptions = {
   origin: true, // Allow all origins temporarily for debugging
   credentials: true,
   methods: ['POST', 'OPTIONS'],
@@ -132,7 +189,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // Add preflight handler
-app.options('*', cors(corsOptions));
+app.options('*', cors(corsOptions)); */
 
 // Add logging middleware to debug CORS
 app.use((req, res, next) => {
@@ -143,9 +200,9 @@ app.use((req, res, next) => {
 });
 
 // Health check and root handler
-app.get('/', (req, res) => {
+/* app.get('/', (req, res) => {
   res.status(200).json({ status: 'ok' });
-});
+}); */
 
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
@@ -153,7 +210,8 @@ app.get('/health', (req, res) => {
 
 
 // Chat endpoint
-app.post('/api/chat', cors(corsOptions), async (req, res) => {
+//app.post('/api/chat', cors(corsOptions), async (req, res) => {
+app.post('/api/chat', async (req, res) => {
   try {
     console.log('[Server] Processing chat request');
     
