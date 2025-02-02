@@ -121,59 +121,26 @@ const corsOptions = {
 
 app.use(cors(corsOptions)); */
 const corsOptions = {
-  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    // Allow localhost for development
-    if (!origin || origin.includes('localhost')) {
-      callback(null, true);
-      return;
-    }
-
-    // Allow any Vercel deployment URL for your project
-    if (
-      origin.includes('vercel.app') && 
-      (
-        origin.includes('ai-demo-trippy') || 
-        origin.includes('-amits-projects-04ce3c09')
-      )
-    ) {
-      callback(null, true);
-      return;
-    }
-
-    // Allow your production domain if you have one
-    // if (origin === 'https://your-production-domain.com') {
-    //   callback(null, true);
-    //   return;
-    // }
-
-    console.log('Rejected Origin:', origin);
-    callback(new Error('Not allowed by CORS'));
-  },
+  origin: true, // Allow all origins temporarily for debugging
+  credentials: true,
   methods: ['POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
   maxAge: 86400
 };
 
-// Add detailed logging for debugging
+// Add CORS middleware before routes
+app.use(cors(corsOptions));
+
+// Add preflight handler
+app.options('*', cors(corsOptions));
+
+// Add logging middleware to debug CORS
 app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-  console.log('Origin:', req.headers.origin);
-  console.log('Referer:', req.headers.referer);
+  console.log('Request Headers:', req.headers);
+  console.log('Request Origin:', req.headers.origin);
+  console.log('Request Method:', req.method);
   next();
 });
-
-// Handle preflight requests
-//app.options('*', cors(corsOptions));
-// Add this before your POST handler in server.ts
-app.options('/api/chat', cors(corsOptions), (req, res) => {
-  res.status(200).end();
-});
-
-/* // Update your existing route to use cors middleware explicitly
-app.post('/api/chat', cors(corsOptions), async (req, res) => {
-  // Your existing handler code...
-}); */
 
 
 // Chat endpoint
