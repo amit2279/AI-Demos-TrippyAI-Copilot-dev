@@ -142,6 +142,15 @@ app.use((req, res, next) => {
   next();
 });
 
+// Health check and root handler
+app.get('/', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
 
 // Chat endpoint
 app.post('/api/chat', cors(corsOptions), async (req, res) => {
