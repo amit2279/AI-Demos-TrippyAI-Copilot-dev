@@ -16,8 +16,6 @@ if (!apiKey) {
   process.exit(1);
 }
 
-console.log('API Key configured:', !!apiKey);
-
 const anthropic = new Anthropic({
   apiKey
 });
@@ -86,7 +84,7 @@ CRITICAL RULES:
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-/* // Configure CORS with dynamic origin validation
+// Configure CORS with dynamic origin validation
 const corsOptions = {
   origin: function(origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
     // Allow requests with no origin (like mobile apps or curl requests)
@@ -99,7 +97,8 @@ const corsOptions = {
     const allowedPatterns = [
       /^https?:\/\/localhost(:\d+)?$/,
       /^https?:\/\/[\w-]+\.vercel\.app$/,
-      /^https?:\/\/[\w-]+-[\w-]+-[\w-]+\.vercel\.app$/
+      /^https?:\/\/[\w-]+-[\w-]+-[\w-]+\.vercel\.app$/,
+      /^https?:\/\/ai-demo-trippy\.vercel\.app$/
     ];
 
     const isAllowed = allowedPatterns.some(pattern => pattern.test(origin));
@@ -108,7 +107,7 @@ const corsOptions = {
       callback(null, true);
     } else {
       console.warn('Blocked origin:', origin);
-      callback(null, false);
+      callback(new Error('Not allowed by CORS'));
     }
   },
   methods: ['GET', 'POST', 'OPTIONS'],
@@ -118,99 +117,13 @@ const corsOptions = {
   preflightContinue: false,
   optionsSuccessStatus: 204
 };
-app.use(cors(corsOptions)); */
 
-// Update in server.ts
-
-// CORS configuration
-const corsOptions = {
-  origin: '*', // Allow all origins
-  methods: 'GET,POST,OPTIONS',
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  optionsSuccessStatus: 200
-};
-
-// Apply CORS middleware
 app.use(cors(corsOptions));
 
-// Add explicit OPTIONS handler for preflight requests
+// Handle preflight requests
 app.options('*', cors(corsOptions));
 
-// Add GET handler for /api/chat to explain usage
-app.get('/api/chat', (req, res) => {
-  res.status(405).json({
-    error: 'Method not allowed',
-    message: 'This endpoint only accepts POST requests for chat interactions',
-    usage: {
-      method: 'POST',
-      contentType: 'application/json',
-      body: {
-        messages: [
-          {
-            role: 'user',
-            content: 'Your message here'
-          }
-        ]
-      }
-    }
-  });
-});
-
-/* // Your existing POST handler
-app.post('/api/chat', async (req, res) => {
-  // ... your existing code ...
-}); */
-
-// Root route handler
-app.get('/', (req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    endpoints: {
-      chat: {
-        url: '/api/chat',
-        method: 'POST',
-        description: 'Chat endpoint for message interactions'
-      }
-    }
-  });
-});
-
-
-
-/* const corsOptions = {
-  origin: true, // Allow all origins temporarily for debugging
-  credentials: true,
-  methods: ['POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  maxAge: 86400
-};
-
-// Add CORS middleware before routes
-app.use(cors(corsOptions));
-
-// Add preflight handler
-app.options('*', cors(corsOptions)); */
-
-// Add logging middleware to debug CORS
-app.use((req, res, next) => {
-  console.log('Request Headers:', req.headers);
-  console.log('Request Origin:', req.headers.origin);
-  console.log('Request Method:', req.method);
-  next();
-});
-
-// Health check and root handler
-/* app.get('/', (req, res) => {
-  res.status(200).json({ status: 'ok' });
-}); */
-
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
-});
-
-
 // Chat endpoint
-//app.post('/api/chat', cors(corsOptions), async (req, res) => {
 app.post('/api/chat', async (req, res) => {
   try {
     console.log('[Server] Processing chat request');
