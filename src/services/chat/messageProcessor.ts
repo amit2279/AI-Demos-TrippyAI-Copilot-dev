@@ -39,19 +39,6 @@ export function processStreamingMessage(content: string): ProcessedMessage {
           // The city is usually the first part
           cityPart = locationParts[0].trim();
         }
-        
-        /*// Clean up the city name
-        cityPart = cityPart
-          .replace(/(?:restaurant|cafe|hotel|the|bar|grill|pub|bistro|lounge)\b/gi, '')
-          .replace(/^[\s\W]+|[\s\W]+$/g, '')
-          .trim();
-        
-        console.log('[MessageProcessor] Weather location extracted:', cityPart);
-        return {
-          textContent: content,
-          jsonContent: null,
-          weatherLocation: cityPart
-        };*/
         // Clean up the city name
         cityPart = cityPart
           // Remove common business prefixes/suffixes
@@ -161,6 +148,7 @@ export function processStreamingMessage(content: string): ProcessedMessage {
       .trim();
 
     // Only return JSON content if it's complete
+    //console.log('[MessageProcessor] Valid JSON:', validJson);
     if (validJson) {
       try {
         const parsedJson = JSON.parse(validJson);

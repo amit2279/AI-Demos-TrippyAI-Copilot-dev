@@ -6,6 +6,8 @@ const anthropic = new Anthropic({
   apiKey: process.env.CLAUDE_API_KEY
 });
 
+console.log('CLAUDE_API_KEY ----- ', process.env.CLAUDE_API_KEY);
+
 // Initialize CORS middleware
 const corsMiddleware = cors({
   methods: ['POST', 'OPTIONS'],

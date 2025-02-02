@@ -84,11 +84,10 @@ export function ChatPanel({
       {/* Header */}
       <div className="p-4 border-b z-40 relative bg-white">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gray-100 rounded-full">
-            <Compass className="w-6 h-6 text-gray-600" />
+          <div className="p-2 bg-white-100 rounded-full">
           </div>
           <div>
-            <h2 className="text-xl font-bold text-gray-800">Trippy</h2>
+            <h2 className="text-xl font-bold text-gray-800">✈️ Tripper</h2>
             <p className="text-sm text-gray-500">Your AI Travel Companion</p>
           </div>
         </div>
@@ -161,6 +160,7 @@ export function ChatPanel({
     </div>
   );
 };
+
 
 // import React, { useState, useRef, useEffect } from 'react';
 // import { Send, Loader2, Compass, GripVertical } from 'lucide-react';
