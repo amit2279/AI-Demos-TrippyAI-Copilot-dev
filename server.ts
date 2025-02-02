@@ -86,7 +86,7 @@ CRITICAL RULES:
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Configure CORS with dynamic origin validation
+/* // Configure CORS with dynamic origin validation
 const corsOptions = {
   origin: function(origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
     // Allow requests with no origin (like mobile apps or curl requests)
@@ -119,13 +119,65 @@ const corsOptions = {
   optionsSuccessStatus: 204
 };
 
-app.use(cors(corsOptions));
+app.use(cors(corsOptions)); */
+const corsOptions = {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    // Allow localhost for development
+    if (!origin || origin.includes('localhost')) {
+      callback(null, true);
+      return;
+    }
+
+    // Allow any Vercel deployment URL for your project
+    if (
+      origin.includes('vercel.app') && 
+      (
+        origin.includes('ai-demo-trippy') || 
+        origin.includes('-amits-projects-04ce3c09')
+      )
+    ) {
+      callback(null, true);
+      return;
+    }
+
+    // Allow your production domain if you have one
+    // if (origin === 'https://your-production-domain.com') {
+    //   callback(null, true);
+    //   return;
+    // }
+
+    console.log('Rejected Origin:', origin);
+    callback(new Error('Not allowed by CORS'));
+  },
+  methods: ['POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+  maxAge: 86400
+};
+
+// Add detailed logging for debugging
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  console.log('Origin:', req.headers.origin);
+  console.log('Referer:', req.headers.referer);
+  next();
+});
 
 // Handle preflight requests
-app.options('*', cors(corsOptions));
+//app.options('*', cors(corsOptions));
+// Add this before your POST handler in server.ts
+app.options('/api/chat', cors(corsOptions), (req, res) => {
+  res.status(200).end();
+});
+
+/* // Update your existing route to use cors middleware explicitly
+app.post('/api/chat', cors(corsOptions), async (req, res) => {
+  // Your existing handler code...
+}); */
+
 
 // Chat endpoint
-app.post('/api/chat', async (req, res) => {
+app.post('/api/chat', cors(corsOptions), async (req, res) => {
   try {
     console.log('[Server] Processing chat request');
     
