@@ -1,6 +1,5 @@
 import express from 'express';
 import { Anthropic } from '@anthropic-ai/sdk';
-import { CLAUDE_API_KEY } from './src/config';
 import cors from 'cors';
 import dotenv from 'dotenv';
 
@@ -8,13 +7,19 @@ dotenv.config();
 
 const app = express();
 
+// Get API key from environment variables
+const apiKey = process.env.CLAUDE_API_KEY;
+
 // Validate API key immediately
-if (!CLAUDE_API_KEY && !process.env.CLAUDE_API_KEY) {
-  throw new Error('Missing CLAUDE_API_KEY environment variable');
+if (!apiKey) {
+  console.error('Missing CLAUDE_API_KEY environment variable');
+  process.exit(1);
 }
 
+console.log('API Key configured:', !!apiKey);
+
 const anthropic = new Anthropic({
-  apiKey: CLAUDE_API_KEY || process.env.CLAUDE_API_KEY
+  apiKey
 });
 
 // System prompts remain the same
@@ -81,32 +86,33 @@ CRITICAL RULES:
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Configure CORS
+// Configure CORS with all necessary headers
 const allowedOrigins = [
   'http://localhost:5173',
   'https://ai-demo-trippy.vercel.app',
-  'https://ai-demo-trippy-4hkphorau-amits-projects-04ce3c09.vercel.app'
+  'https://ai-demo-trippy-ix0c71xos-amits-projects-04ce3c09.vercel.app'
 ];
 
 app.use(cors({
-  origin: (origin, callback) => {
+  origin: function(origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
+    if (allowedOrigins.indexOf(origin) === -1) {
+      return callback(null, false);
     }
+    return callback(null, true);
   },
-  methods: ['POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type'],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
-  maxAge: 86400 // 24 hours
+  maxAge: 86400, // 24 hours
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 }));
 
 // Handle preflight requests
-app.options('/api/chat', cors());
+app.options('*', cors());
 
 app.post('/api/chat', async (req, res) => {
   try {
@@ -232,6 +238,18 @@ app.listen(port, () => {
   console.log('[Server] Environment:', process.env.NODE_ENV);
   console.log('[Server] API key configured:', !!anthropic.apiKey);
 });
+
+
+
+
+
+
+
+
+
+
+
+
 /* import express from 'express';
 import { Anthropic } from '@anthropic-ai/sdk';
 import { CLAUDE_API_KEY } from './src/config';
