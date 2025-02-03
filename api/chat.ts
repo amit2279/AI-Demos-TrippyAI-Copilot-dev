@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { NextRequest, NextResponse } from 'next/server';
 import { Anthropic } from '@anthropic-ai/sdk';
 import type { CorsOptions } from 'cors';
 import cors from 'cors';
@@ -6,6 +6,7 @@ import cors from 'cors';
 const anthropic = new Anthropic({
   apiKey: process.env.CLAUDE_API_KEY
 });
+
 
 // System prompts remain the same
 const CHAT_SYSTEM_PROMPT = `You are a knowledgeable travel assistant. Provide helpful travel recommendations and information.
@@ -68,6 +69,7 @@ CRITICAL RULES:
 - Keep descriptions factual and brief`;
 
 
+
 // Initialize CORS middleware
 const corsOptions: CorsOptions = {
   origin: [
@@ -82,9 +84,9 @@ const corsOptions: CorsOptions = {
 
 // Wrapper for using CORS with API routes
 function runMiddleware(
-  req: VercelRequest,
-  res: VercelResponse,
-  fn: Function
+  req: NextRequest,
+  res: NextResponse,
+  fn: (req: NextRequest, res: NextResponse, cb: (result: any) => void) => void
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     fn(req, res, (result: any) => {
@@ -97,8 +99,8 @@ function runMiddleware(
 }
 
 export default async function handler(
-  req: VercelRequest,
-  res: VercelResponse
+  req: NextRequest,
+  res: NextResponse
 ): Promise<void> {
   // Run the CORS middleware
   await runMiddleware(req, res, cors(corsOptions));
@@ -108,7 +110,7 @@ export default async function handler(
   }
 
   try {
-    const { messages } = req.body;
+    const { messages } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
       return res.status(400).json({ error: 'Invalid request format' });
@@ -139,8 +141,8 @@ export default async function handler(
       const stream = await anthropic.messages.create({
         model: 'claude-3-opus-20240229',
         max_tokens: 4096,
-        messages,
         system: CHAT_SYSTEM_PROMPT,
+        messages,
         stream: true
       });
 
