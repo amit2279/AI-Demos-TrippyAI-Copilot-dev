@@ -84,7 +84,7 @@ const corsOptions: cors.CorsOptions = {
     const allowedOrigins = [
       'http://localhost:5173',
       'https://ai-demo-trippy.vercel.app',
-      'https://ai-demo-trippy-*-amits-projects-04ce3c09.vercel.app'
+      /\.vercel\.app$/ // Allows all vercel.app subdomains
     ];
     
     if (!origin || allowedOrigins.some(allowed => 
@@ -99,8 +99,8 @@ const corsOptions: cors.CorsOptions = {
       callback(error);
     }
   },
-  methods: ['POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type'],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
   maxAge: 86400
 };
