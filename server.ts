@@ -121,9 +121,7 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 import express from 'express';
 import { Anthropic } from '@anthropic-ai/sdk';
 import { CLAUDE_API_KEY } from './src/config';
-import cors from 'cors';
 import dotenv from 'dotenv';
-import type { Request, Response, NextFunction } from 'express';
 
 dotenv.config();
 
@@ -198,63 +196,13 @@ CRITICAL RULES:
 - DO NOT include weather or seasonal information
 - Keep descriptions factual and brief`;
 
-// CORS configuration with proper typing
-const corsOptions: cors.CorsOptions = {
-  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    const allowedOrigins = [
-      'http://localhost:5173',
-      'https://ai-demo-trippy.vercel.app',
-      'https://ai-demo-trippy-*-amits-projects-04ce3c09.vercel.app'
-    ];
-    
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) {
-      callback(null, true);
-      return;
-    }
-
-    // Check if origin matches any allowed patterns
-    const isAllowed = allowedOrigins.some(allowed => 
-      allowed.includes('*') 
-        ? origin.startsWith(allowed.replace('*', '')) 
-        : origin === allowed
-    );
-
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      console.warn(`[CORS] Blocked request from origin: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  methods: ['POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type'],
-  credentials: true,
-  maxAge: 86400,
-  preflightContinue: false, // Handle OPTIONS requests properly
-  optionsSuccessStatus: 204 // Return 204 for OPTIONS requests
-};
-
-// Apply CORS middleware before any routes
-app.use(cors(corsOptions));
-
 // Increase payload limits
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Add preflight handler for all routes
-app.options('*', cors(corsOptions));
-
-// Apply CORS middleware
-app.use(cors(corsOptions));
-
-// Add error handling middleware
-app.use(errorHandler);
-
-app.post('/api/chat', async (req: Request, res: Response) => {
+// Chat endpoint
+app.post('/api/chat', async (req, res) => {
   try {
-    console.log('[Server] Processing chat request');
-    
     const { messages } = req.body;
     if (!messages || !Array.isArray(messages)) {
       return res.status(400).json({ error: 'Invalid request format' });
@@ -271,7 +219,6 @@ app.post('/api/chat', async (req: Request, res: Response) => {
     );
 
     if (isVisionRequest) {
-      console.log('[Server] Processing vision request');
       try {
         const response = await anthropic.messages.create({
           model: 'claude-3-opus-20240229',
@@ -281,42 +228,15 @@ app.post('/api/chat', async (req: Request, res: Response) => {
           temperature: 0.2
         });
 
-        console.log('[Server] Vision API response received');
-        
-        let responseText = response.content[0].text.trim();
-        try {
-          // Ensure we have valid JSON
-          const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            const json = JSON.parse(jsonMatch[0]);
-            res.write(`data: ${JSON.stringify({ text: JSON.stringify(json) })}\n\n`);
-          } else {
-            throw new Error('No JSON found in response');
-          }
-        } catch (e) {
-          console.error('[Server] JSON parsing error:', e);
-          res.write(`data: ${JSON.stringify({ 
-            text: JSON.stringify({ error: "Failed to parse location data" })
-          })}\n\n`);
-        }
+        const text = response.content[0].text;
+        res.write(`data: ${JSON.stringify({ text })}\n\n`);
       } catch (error) {
         console.error('[Server] Vision API error:', error);
         res.write(`data: ${JSON.stringify({ 
-          text: JSON.stringify({ 
-            error: "Failed to process image",
-            details: process.env.NODE_ENV === 'development' ? error instanceof Error ? error.message : 'Unknown error' : undefined
-          })
+          text: JSON.stringify({ error: "Failed to process image" })
         })}\n\n`);
       }
-      
-      res.write('data: [DONE]\n\n');
-      res.end();
-      return;
-    }
-
-    // Regular chat processing
-    console.log('[Server] Processing regular chat request');
-    try {
+    } else {
       const stream = await anthropic.messages.create({
         model: 'claude-3-opus-20240229',
         max_tokens: 4096,
@@ -330,51 +250,17 @@ app.post('/api/chat', async (req: Request, res: Response) => {
           res.write(`data: ${JSON.stringify({ text: chunk.delta.text })}\n\n`);
         }
       }
-
-      res.write('data: [DONE]\n\n');
-      res.end();
-    } catch (error) {
-      console.error('[Server] Chat API error:', error);
-      if (!res.headersSent) {
-        res.status(500).json({ 
-          error: 'Chat API error',
-          message: process.env.NODE_ENV === 'development' ? error instanceof Error ? error.message : 'Unknown error' : undefined
-        });
-      } else {
-        res.write(`data: ${JSON.stringify({ error: 'Chat API error' })}\n\n`);
-        res.write('data: [DONE]\n\n');
-        res.end();
-      }
     }
+
+    res.write('data: [DONE]\n\n');
+    res.end();
   } catch (error) {
     console.error('[Server] Error:', error);
-    
-    if (!res.headersSent) {
-      if (error instanceof Error) {
-        if (error.message.includes('413')) {
-          return res.status(413).json({ error: 'Content too large' });
-        }
-        if (error.message.includes('429')) {
-          return res.status(429).json({ error: 'Rate limit exceeded' });
-        }
-        if (error.message.includes('401')) {
-          return res.status(401).json({ error: 'Invalid API key' });
-        }
-      }
-      
-      res.status(500).json({ error: 'Failed to process request' });
-    } else {
-      res.write(`data: ${JSON.stringify({ error: 'Internal server error' })}\n\n`);
-      res.write('data: [DONE]\n\n');
-      res.end();
-    }
+    res.status(500).json({ error: 'Failed to process request' });
   }
 });
 
 const port = process.env.PORT || 3000;
-
 app.listen(port, () => {
   console.log(`[Server] Running on port ${port}`);
-  console.log('[Server] Environment:', process.env.NODE_ENV);
-  console.log('[Server] API key configured:', !!anthropic.apiKey);
 });
