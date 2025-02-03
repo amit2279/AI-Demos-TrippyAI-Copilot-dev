@@ -1,7 +1,5 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
   "builds": [
     {
       "src": "server.ts",
@@ -21,24 +19,6 @@
     {
       "src": "/(.*)",
       "dest": "server.ts"
-    }
-  ],
-  "rewrites": [
-    { "source": "/api/chat", "destination": "/api/chat.ts" },
-    { "source": "/cors-test", "destination": "/cors-test.html" },
-    { "source": "/cors-test.html", "destination": "/cors-test.html" },
-    { "source": "/(.*)", "destination": "/index.html" }
-  ],
-  "headers": [
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        { "key": "Access-Control-Allow-Credentials", "value": "true" },
-        { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "OPTIONS, POST, GET" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET,OPTIONS,PATCH,DELETE,POST,PUT" },
-        { "key": "Access-Control-Allow-Headers", "value": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization" }
-      ]
     }
   ]
 }
