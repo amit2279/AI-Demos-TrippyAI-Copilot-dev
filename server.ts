@@ -1,8 +1,9 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express from 'express';
 import { Anthropic } from '@anthropic-ai/sdk';
 import { CLAUDE_API_KEY } from './src/config';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import type { Request, Response, NextFunction } from 'express';
 
 dotenv.config();
 
@@ -77,8 +78,8 @@ CRITICAL RULES:
 - DO NOT include weather or seasonal information
 - Keep descriptions factual and brief`;
 
-// CORS configuration
-const corsOptions = {
+// CORS configuration with proper typing
+const corsOptions: cors.CorsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
     const allowedOrigins = [
       'http://localhost:5173',
@@ -94,8 +95,7 @@ const corsOptions = {
       callback(null, true);
     } else {
       console.warn(`[CORS] Blocked request from origin: ${origin}`);
-      const error = new Error('Not allowed by CORS') as any;
-      error.status = 403;
+      const error = new Error('Not allowed by CORS');
       callback(error);
     }
   },
@@ -105,12 +105,23 @@ const corsOptions = {
   maxAge: 86400
 };
 
+// Error handling middleware with proper typing
+const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
+  console.error('[Server] Error:', err);
+  if (!res.headersSent) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // Increase payload limits
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Apply CORS middleware
 app.use(cors(corsOptions));
+
+// Add error handling middleware
+app.use(errorHandler);
 
 app.post('/api/chat', async (req: Request, res: Response) => {
   try {
@@ -137,7 +148,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
         const response = await anthropic.messages.create({
           model: 'claude-3-opus-20240229',
           max_tokens: 4096,
-          messages: messages,
+          messages,
           system: VISION_SYSTEM_PROMPT,
           temperature: 0.2
         });
@@ -165,7 +176,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
         res.write(`data: ${JSON.stringify({ 
           text: JSON.stringify({ 
             error: "Failed to process image",
-            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+            details: process.env.NODE_ENV === 'development' ? error instanceof Error ? error.message : 'Unknown error' : undefined
           })
         })}\n\n`);
       }
@@ -199,7 +210,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
       if (!res.headersSent) {
         res.status(500).json({ 
           error: 'Chat API error',
-          message: process.env.NODE_ENV === 'development' ? error.message : undefined
+          message: process.env.NODE_ENV === 'development' ? error instanceof Error ? error.message : 'Unknown error' : undefined
         });
       } else {
         res.write(`data: ${JSON.stringify({ error: 'Chat API error' })}\n\n`);

@@ -28,10 +28,8 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
     if (locationKey === lastLocationRef.current) return;
     lastLocationRef.current = locationKey;
 
-    console.log('[MapUpdater] Selected location:',selectedLocation)
-
     // Extract city name from location
-    const cityName = selectedLocation.city || extractCityName(selectedLocation.id);
+    const cityName = selectedLocation.city || extractCityName(selectedLocation.name);
     
     // Update city context
     console.log('[MapUpdater] Setting city context:', cityName);
