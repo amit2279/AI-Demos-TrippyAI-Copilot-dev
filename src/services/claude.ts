@@ -209,13 +209,12 @@ function validateMessageSize(messages: ChatMessage[]): void {
     }
   }
 } */
-
   export async function* getStreamingChatResponse(messages: ChatMessage[]) {
     let retries = 0;
-    let fullResponse = '';
   
     while (retries < MAX_RETRIES) {
       try {
+        // Filter out messages with empty content
         const validMessages = messages.filter(msg => {
           if (Array.isArray(msg.content)) {
             return msg.content.length > 0 && msg.content.every(c => 
@@ -263,29 +262,11 @@ function validateMessageSize(messages: ChatMessage[]): void {
           for (const line of lines) {
             if (line.startsWith('data: ')) {
               const data = line.slice(5).trim();
-              if (data === '[DONE]') {
-                // Process complete response for location data
-                const jsonMatch = fullResponse.match(/{\s*"locations":\s*\[([\s\S]*?)\]\s*}/);
-                if (jsonMatch) {
-                  try {
-                    const jsonData = JSON.parse(jsonMatch[0]);
-                    if (jsonData.locations?.[0]?.city) {
-                      console.log('[ChatService] Setting city context:', jsonData.locations[0].city);
-                      cityContext.setCurrentCity(jsonData.locations[0].city);
-                    }
-                  } catch (e) {
-                    console.warn('[ChatService] Error parsing final JSON:', e);
-                  }
-                }
-                return;
-              }
+              if (data === '[DONE]') return;
               try {
                 const parsed = JSON.parse(data);
                 if (parsed.error) throw new Error(parsed.error);
-                if (parsed.text) {
-                  fullResponse += parsed.text;
-                  yield parsed.text;
-                }
+                if (parsed.text) yield parsed.text;
               } catch (e) {
                 console.warn('[ChatService] Parse error:', e);
               }
@@ -301,6 +282,7 @@ function validateMessageSize(messages: ChatMessage[]): void {
   
         if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
           if (retries < MAX_RETRIES) {
+            console.log(`[ChatService] Retrying in ${RETRY_DELAY}ms...`);
             await wait(RETRY_DELAY * retries);
             continue;
           }
