@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CORS Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            display: none;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .log {
+            background: #1e1e1e;
+            color: #fff;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .endpoint-input {
+            width: 100%;
+            padding: 8px;
+            margin: 10px 0;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid;
+        }
+        .log-info { border-color: #17a2b8; }
+        .log-error { border-color: #dc3545; }
+        .log-success { border-color: #28a745; }
+    </style>
+</head>
+<body>
+    <h1>CORS Test Page</h1>
+    
+    <div class="container">
+        <h2>Test Configuration</h2>
+        <input type="text" id="endpoint" class="endpoint-input" 
+               value="https://ai-demo-trippy.vercel.app/api/chat" 
+               placeholder="Enter API endpoint">
+        
+        <h3>Test Endpoints:</h3>
+        <ul>
+            <li>Production: https://ai-demo-trippy.vercel.app/api/chat</li>
+            <li>Local: http://localhost:3000/api/chat</li>
+            <li>Test Server: http://localhost:3001/test</li>
+        </ul>
+    </div>
+
+    <div class="container">
+        <h2>Test Actions</h2>
+        <button onclick="testCORS('simple')">Simple CORS Test</button>
+        <button onclick="testCORS('preflight')">Preflight CORS Test</button>
+        <button onclick="testCORS('credentials')">Credentials CORS Test</button>
+        
+        <div id="result" class="result"></div>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const logEl = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logEl.appendChild(entry);
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function showResult(message, isError = false) {
+            const resultEl = document.getElementById('result');
+            resultEl.style.display = 'block';
+            resultEl.className = `result ${isError ? 'error' : 'success'}`;
+            resultEl.textContent = message;
+        }
+
+        async function testCORS(type) {
+            const endpoint = document.getElementById('endpoint').value;
+            log(`Starting ${type} CORS test to ${endpoint}`, 'info');
+
+            try {
+                let options = {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                };
+
+                // Add test-specific options
+                switch (type) {
+                    case 'credentials':
+                        options.credentials = 'include';
+                        log('Added credentials mode', 'info');
+                        break;
+                    case 'preflight':
+                        options.headers['X-Test-Header'] = 'test';
+                        log('Added custom header for preflight', 'info');
+                        break;
+                }
+
+                // Add test message
+                options.body = JSON.stringify({
+                    messages: [{
+                        role: 'user',
+                        content: 'CORS test message'
+                    }]
+                });
+
+                log('Sending request...', 'info');
+                const response = await fetch(endpoint, options);
+                
+                if (response.ok) {
+                    const data = await response.text();
+                    log('Response received successfully', 'success');
+                    showResult(`${type} test successful! Response: ${data}`);
+                } else {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+                showResult(`${type} test failed: ${error.message}`, true);
+                
+                if (error.message.includes('CORS')) {
+                    log('CORS error detected. Checking response headers...', 'info');
+                    try {
+                        const response = await fetch(endpoint, { method: 'OPTIONS' });
+                        const headers = Array.from(response.headers.entries())
+                            .map(([key, value]) => `${key}: ${value}`)
+                            .join('\n');
+                        log(`CORS headers:\n${headers}`, 'info');
+                    } catch (e) {
+                        log('Could not fetch CORS headers', 'error');
+                    }
+                }
+            }
+        }
+
+        // Initial log entry
+        log('CORS test page loaded. Ready to run tests.', 'info');
+    </script>
+</body>
+</html>
