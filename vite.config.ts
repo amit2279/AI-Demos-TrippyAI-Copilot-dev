@@ -34,11 +34,9 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: true,
     rollupOptions: {
-      output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom'],
-          'map-vendor': ['leaflet', 'react-leaflet']
-        }
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        'cors-test': path.resolve(__dirname, 'cors-test.html')
       }
     }
   },
@@ -46,8 +44,5 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src')
     }
-  },
-  optimizeDeps: {
-    include: ['react', 'react-dom', 'leaflet', 'react-leaflet']
   }
 });
