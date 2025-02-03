@@ -52,6 +52,7 @@
             border-radius: 4px;
             cursor: pointer;
             font-size: 16px;
+            margin-right: 10px;
         }
         button:hover {
             background: #0056b3;
@@ -67,10 +68,13 @@
             margin: 5px 0;
             padding: 5px;
             border-left: 3px solid;
+            white-space: pre-wrap;
+            word-break: break-all;
         }
         .log-info { border-color: #17a2b8; }
         .log-error { border-color: #dc3545; }
         .log-success { border-color: #28a745; }
+        .log-header { border-color: #ffc107; }
     </style>
 </head>
 <body>
@@ -79,13 +83,14 @@
     <div class="container">
         <h2>Test Configuration</h2>
         <input type="text" id="endpoint" class="endpoint-input" 
-               value="https://ai-demo-trippy.vercel.app/api/chat" 
+               value="/api/chat" 
                placeholder="Enter API endpoint">
         
+        <h3>Current Origin: <span id="currentOrigin"></span></h3>
         <h3>Test Endpoints:</h3>
         <ul>
-            <li>Production: https://ai-demo-trippy.vercel.app/api/chat</li>
-            <li>Local: http://localhost:3000/api/chat</li>
+            <li>Production API: /api/chat</li>
+            <li>Local API: http://localhost:3000/api/chat</li>
             <li>Test Server: http://localhost:3001/test</li>
         </ul>
     </div>
@@ -95,12 +100,16 @@
         <button onclick="testCORS('simple')">Simple CORS Test</button>
         <button onclick="testCORS('preflight')">Preflight CORS Test</button>
         <button onclick="testCORS('credentials')">Credentials CORS Test</button>
+        <button onclick="checkCORSHeaders()">Check CORS Headers</button>
         
         <div id="result" class="result"></div>
         <div id="log" class="log"></div>
     </div>
 
     <script>
+        // Display current origin
+        document.getElementById('currentOrigin').textContent = window.location.origin;
+
         function log(message, type = 'info') {
             const logEl = document.getElementById('log');
             const entry = document.createElement('div');
@@ -115,6 +124,36 @@
             resultEl.style.display = 'block';
             resultEl.className = `result ${isError ? 'error' : 'success'}`;
             resultEl.textContent = message;
+        }
+
+        async function checkCORSHeaders() {
+            const endpoint = document.getElementById('endpoint').value;
+            log(`Checking CORS headers for ${endpoint}`, 'info');
+
+            try {
+                const response = await fetch(endpoint, { 
+                    method: 'OPTIONS',
+                    headers: {
+                        'Origin': window.location.origin,
+                        'Access-Control-Request-Method': 'POST',
+                        'Access-Control-Request-Headers': 'Content-Type'
+                    }
+                });
+
+                log('Response status: ' + response.status, 'header');
+                
+                // Log all headers
+                for (const [key, value] of response.headers) {
+                    if (key.toLowerCase().includes('access-control')) {
+                        log(`${key}: ${value}`, 'header');
+                    }
+                }
+
+                showResult('CORS headers check complete', false);
+            } catch (error) {
+                log(`Error checking CORS headers: ${error.message}`, 'error');
+                showResult('CORS headers check failed: ' + error.message, true);
+            }
         }
 
         async function testCORS(type) {
@@ -149,9 +188,21 @@
                     }]
                 });
 
+                log('Request options:', 'info');
+                log(JSON.stringify(options, null, 2), 'info');
+
                 log('Sending request...', 'info');
                 const response = await fetch(endpoint, options);
                 
+                log('Response status: ' + response.status, 'info');
+                
+                // Log response headers
+                for (const [key, value] of response.headers) {
+                    if (key.toLowerCase().includes('access-control')) {
+                        log(`${key}: ${value}`, 'header');
+                    }
+                }
+
                 if (response.ok) {
                     const data = await response.text();
                     log('Response received successfully', 'success');
@@ -165,21 +216,14 @@
                 
                 if (error.message.includes('CORS')) {
                     log('CORS error detected. Checking response headers...', 'info');
-                    try {
-                        const response = await fetch(endpoint, { method: 'OPTIONS' });
-                        const headers = Array.from(response.headers.entries())
-                            .map(([key, value]) => `${key}: ${value}`)
-                            .join('\n');
-                        log(`CORS headers:\n${headers}`, 'info');
-                    } catch (e) {
-                        log('Could not fetch CORS headers', 'error');
-                    }
+                    await checkCORSHeaders();
                 }
             }
         }
 
         // Initial log entry
         log('CORS test page loaded. Ready to run tests.', 'info');
+        log('Current origin: ' + window.location.origin, 'info');
     </script>
 </body>
 </html>
