@@ -82,9 +82,14 @@ CRITICAL RULES:
 - DO NOT include weather or seasonal information
 - Keep descriptions factual and brief`;
 
-// Increase payload limits
+/* // Increase payload limits
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Handle preflight requests explicitly
+app.options('/api/chat', (req, res) => {
+  res.status(200).end();
+}); */
 
 /* // Configure CORS with error handling
 const corsOptions = {
@@ -108,7 +113,7 @@ const corsOptions = {
 
 app.use(cors(corsOptions)); */
 
-const corsOptions = {
+/* const corsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
     // Allow all Vercel preview deployments and your main domain
     if (!origin || 
@@ -128,7 +133,45 @@ const corsOptions = {
 };
 
 // Apply CORS middleware
+app.use(cors(corsOptions)); */
+
+// CORS configuration
+const corsOptions = {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'https://ai-demo-trippy.vercel.app',
+      'https://ai-demo-trippy-*-amits-projects-04ce3c09.vercel.app'
+    ];
+    
+    if (!origin || allowedOrigins.some(allowed => 
+      allowed.includes('*') 
+        ? origin.startsWith(allowed.replace('*', '')) 
+        : origin === allowed
+    )) {
+      callback(null, true);
+    } else {
+      console.warn(`[CORS] Blocked request from origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'],
+  credentials: true,
+  maxAge: 86400
+};
+
+// Apply CORS middleware
 app.use(cors(corsOptions));
+
+// Increase payload limits
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Handle preflight requests explicitly
+app.options('/api/chat', (req, res) => {
+  res.status(200).end();
+});
 
 // Add preflight handler
 app.options('*', cors(corsOptions));
