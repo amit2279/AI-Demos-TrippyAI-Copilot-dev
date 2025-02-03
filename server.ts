@@ -1,4 +1,4 @@
-import express from 'express';
+/* import express from 'express';
 import { Anthropic } from '@anthropic-ai/sdk';
 import { CLAUDE_API_KEY } from './src/config';
 import cors from 'cors';
@@ -116,6 +116,134 @@ const errorHandler = (err: Error, req: Request, res: Response, next: NextFunctio
 // Increase payload limits
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+ */
+
+import express from 'express';
+import { Anthropic } from '@anthropic-ai/sdk';
+import { CLAUDE_API_KEY } from './src/config';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import type { Request, Response, NextFunction } from 'express';
+
+dotenv.config();
+
+const app = express();
+
+// Validate API key immediately
+if (!CLAUDE_API_KEY && !process.env.CLAUDE_API_KEY) {
+  throw new Error('Missing CLAUDE_API_KEY environment variable');
+}
+
+const anthropic = new Anthropic({
+  apiKey: CLAUDE_API_KEY || process.env.CLAUDE_API_KEY
+});
+
+// System prompts remain the same
+const CHAT_SYSTEM_PROMPT = `You are a knowledgeable travel assistant. Provide helpful travel recommendations and information.
+
+CRITICAL - WEATHER QUERY HANDLING:
+For ANY query containing words like "weather", "temperature", "climate", "forecast", or asking about seasons:
+- You MUST ONLY respond with EXACTLY: "Let me check the current weather in [City]..."
+- Extract ONLY the city name from the query
+- DO NOT provide ANY weather information, forecasts, or seasonal details
+- DO NOT include ANY JSON data for weather queries
+- DO NOT mention historical weather patterns
+- DO NOT suggest best times to visit
+- DO NOT include any additional information
+
+For all other location queries, format your response in two parts:
+
+1. Your natural language response, which should:
+   - Use bullet points or numbered lists for better readability
+   - Keep each location description to 1-2 lines maximum
+   - Focus on the unique key features of each place
+   - DO NOT include ANY weather or climate information
+
+2. Followed by a JSON block in this EXACT format:
+
+{ "locations": [
+  {
+    "name": "Location Name",
+    "coordinates": [latitude, longitude],
+    "rating": 4.5,
+    "reviews": 1000,
+    "image": "https://images.unsplash.com/photo-SPECIFIC-PHOTO-ID?w=800&h=600&fit=crop"
+  }
+] }`;
+
+const VISION_SYSTEM_PROMPT = `You are a computer vision expert specializing in identifying landmarks and locations from images. When shown an image:
+
+1. Identify the main landmark, building, or location
+2. Determine the city and country where it's located
+3. Determine its exact geographical coordinates
+4. Provide a brief 1-2 line description
+5. Format your response EXACTLY like this, with no additional text:
+
+{
+  "name": "Exact Location Name",
+  "city": "City Name",
+  "country": "Country",
+  "coordinates": "DD.DDDD°N/S, DDD.DDDD°E/W",
+  "description": "Brief description"
+}
+
+CRITICAL RULES:
+- ALWAYS include the city name separately from the location name
+- City name should be the main city, not a district or neighborhood
+- For monuments/landmarks, use the city they are located in
+- ONLY respond with the JSON format above
+- Coordinates MUST be valid numbers
+- If location cannot be identified with high confidence, respond with: {"error": "Location could not be identified"}
+- DO NOT include any explanatory text outside the JSON
+- DO NOT include weather or seasonal information
+- Keep descriptions factual and brief`;
+
+// CORS configuration with proper typing
+const corsOptions: cors.CorsOptions = {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'https://ai-demo-trippy.vercel.app',
+      'https://ai-demo-trippy-*-amits-projects-04ce3c09.vercel.app'
+    ];
+    
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    // Check if origin matches any allowed patterns
+    const isAllowed = allowedOrigins.some(allowed => 
+      allowed.includes('*') 
+        ? origin.startsWith(allowed.replace('*', '')) 
+        : origin === allowed
+    );
+
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      console.warn(`[CORS] Blocked request from origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'],
+  credentials: true,
+  maxAge: 86400,
+  preflightContinue: false, // Handle OPTIONS requests properly
+  optionsSuccessStatus: 204 // Return 204 for OPTIONS requests
+};
+
+// Apply CORS middleware before any routes
+app.use(cors(corsOptions));
+
+// Increase payload limits
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Add preflight handler for all routes
+app.options('*', cors(corsOptions));
 
 // Apply CORS middleware
 app.use(cors(corsOptions));
