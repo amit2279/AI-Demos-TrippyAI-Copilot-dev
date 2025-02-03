@@ -162,6 +162,8 @@ export function ChatPanel({
 };
 
 
+
+
 // import React, { useState, useRef, useEffect } from 'react';
 // import { Send, Loader2, Compass, GripVertical } from 'lucide-react';
 // import { Message, Location } from '../types/chat';
