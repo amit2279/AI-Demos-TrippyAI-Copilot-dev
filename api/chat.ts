@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { Anthropic } from '@anthropic-ai/sdk';
-import type { CorsOptions } from 'cors';
+import type { CorsOptions, CorsRequest } from 'cors';
 import cors from 'cors';
 
 const anthropic = new Anthropic({
@@ -23,14 +23,14 @@ const corsOptions: CorsOptions = {
 function runMiddleware(
   req: Request,
   res: Response,
-  fn: (req: Request, res: Response, callback: (result: any) => void) => void
+  fn: (req: CorsRequest, res: Response, callback: (err: any) => void) => void
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    fn(req, res, (result: any) => {
+    fn(req as CorsRequest, res, (result: any) => {
       if (result instanceof Error) {
         return reject(result);
       }
-      return resolve(result);
+      return resolve();
     });
   });
 }
@@ -38,19 +38,21 @@ function runMiddleware(
 export default async function handler(
   req: Request,
   res: Response
-): Promise<void> {
+) {
   // Run the CORS middleware
   await runMiddleware(req, res, cors(corsOptions));
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
   }
 
   try {
     const { messages } = req.body;
 
     if (!messages || !Array.isArray(messages)) {
-      return res.status(400).json({ error: 'Invalid request format' });
+      res.status(400).json({ error: 'Invalid request format' });
+      return;
     }
 
     // Set up SSE headers
