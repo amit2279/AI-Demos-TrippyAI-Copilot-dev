@@ -2,16 +2,25 @@
   "version": 2,
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "functions": {
-    "api/chat.ts": {
-      "memory": 1024,
-      "maxDuration": 60
-    }
-  },
   "builds": [
     {
       "src": "server.ts",
       "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "headers": {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "OPTIONS, POST, GET",
+        "Access-Control-Allow-Headers": "*"
+      },
+      "dest": "server.ts"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "server.ts"
     }
   ],
   "rewrites": [
