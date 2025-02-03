@@ -156,8 +156,9 @@ const API_URL = process.env.NODE_ENV === 'production'
   ? '/api/chat'
   : 'http://localhost:3000/api/chat';
 
-export async function processLocationImages(images: File[]): Promise<Location[]> {
-  console.log(`[Image Processing] Processing ${images.length} images`);
+
+  export async function processLocationImages(images: File[]): Promise<Location[]> {
+    console.log(`[Image Processing] Processing ${images.length} images`);
   const locations: Location[] = [];
   
   for (const image of images) {
@@ -193,6 +194,31 @@ export async function processLocationImages(images: File[]): Promise<Location[]>
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // Add credentials mode
+        body: JSON.stringify({
+          messages: [{
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: 'Identify this location. Respond with ONLY a JSON object in this format: {"name": "Location Name", "city": "City Name", "country": "Country", "coordinates": "DD.DDDD°N/S, DDD.DDDD°E/W", "description": "Brief description"}'
+              },
+              {
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: 'image/jpeg',
+                  data: base64Image.split(',')[1]
+                }
+              }
+            ]
+          }]
+        })
+      });
+
+      /* const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         mode: 'cors', // Explicitly set CORS mode
         credentials: 'omit', // Don't send credentials
         body: JSON.stringify({
@@ -214,7 +240,7 @@ export async function processLocationImages(images: File[]): Promise<Location[]>
             ]
           }]
         })
-      });
+      }); */
 
       if (!response.ok) throw new Error(`API error: ${response.status}`);
 

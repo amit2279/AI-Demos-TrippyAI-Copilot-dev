@@ -106,6 +106,8 @@ function validateMessageSize(messages: ChatMessage[]): void {
   }
 }
 
+
+
 export async function* getStreamingChatResponse(messages: ChatMessage[]) {
   let retries = 0;
   const processedMessages = new Set<string>();
@@ -140,7 +142,7 @@ export async function* getStreamingChatResponse(messages: ChatMessage[]) {
         timestamp: new Date().toISOString()
       });
 
-      const response = await fetch(API_URL, {
+      /* const response = await fetch(API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -148,6 +150,14 @@ export async function* getStreamingChatResponse(messages: ChatMessage[]) {
         mode: 'cors', // Explicitly set CORS mode
         credentials: 'omit', // Don't send credentials
         body: JSON.stringify({ messages: validMessages })
+      }); */
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ messages: validMessages }),
+        credentials: 'include' // Add credentials mode
       });
 
       if (!response.ok) {
