@@ -18,7 +18,7 @@ const anthropic = new Anthropic({
 });
 
 // System prompts
-const CHAT_SYSTEM_PROMPT = `You are a knowledgeable travel assistant. Provide helpful travel recommendations.
+const CHAT_SYSTEM_PROMPT = `You are a knowledgeable travel assistant. Provide helpful travel recommendations and information.
 
 CRITICAL - WEATHER QUERY HANDLING:
 For ANY query containing words like "weather", "temperature", "climate", "forecast", or asking about seasons:
@@ -43,17 +43,12 @@ For all other location queries, format your response in two parts:
 { "locations": [
   {
     "name": "Location Name",
-    "city": "City Name",
-    "country": "Country",
     "coordinates": [latitude, longitude],
     "rating": 4.5,
     "reviews": 1000,
-    "description": "Brief description",
     "image": "https://images.unsplash.com/photo-SPECIFIC-PHOTO-ID?w=800&h=600&fit=crop"
   }
-] }
-
-CRITICAL: ALWAYS include the city name separately from the location name`;
+] }`;
 
 const VISION_SYSTEM_PROMPT = `You are a computer vision expert specializing in identifying landmarks and locations from images. When shown an image:
 
@@ -82,75 +77,16 @@ CRITICAL RULES:
 - DO NOT include weather or seasonal information
 - Keep descriptions factual and brief`;
 
-/* // Increase payload limits
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
-
-// Handle preflight requests explicitly
-app.options('/api/chat', (req, res) => {
-  res.status(200).end();
-}); */
-
-/* // Configure CORS with error handling
-const corsOptions = {
-  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    const allowedOrigins = [
-      'http://localhost:5173',
-      'https://ai-demo-trippy.vercel.app'
-    ];
-    
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  methods: ['POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type'],
-  credentials: true,
-  maxAge: 86400
-};
-
-app.use(cors(corsOptions)); */
-
-/* const corsOptions = {
-  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    // Allow all Vercel preview deployments and your main domain
-    if (!origin || 
-        origin.includes('vercel.app') || 
-        origin.includes('localhost')) {
-      callback(null, true);
-      return;
-    }
-    
-    console.log('Rejected Origin:', origin);
-    callback(new Error('Not allowed by CORS'));
-  },
-  methods: ['POST', 'GET', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
-  maxAge: 86400
-};
-
-// Apply CORS middleware
-app.use(cors(corsOptions)); */
-
 // CORS configuration
 const corsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
     const allowedOrigins = [
       'http://localhost:5173',
       'https://ai-demo-trippy.vercel.app',
-      'https://ai-demo-trippy-*-amits-projects-04ce3c09.vercel.app',
-      /\.vercel\.app$/, // Allows all vercel.app subdomains,
-      /^https:\/\/ai-demo-trippy-[a-z0-9]+-amits-projects-04ce3c09\.vercel\.app$/ // Allow all preview deployments
+      'https://ai-demo-trippy-7n0oles9x-amits-projects-04ce3c09.vercel.app'
     ];
     
-    if (!origin || allowedOrigins.some(allowed => 
-      allowed.includes('*') 
-        ? origin.startsWith(allowed.replace('*', '')) 
-        : origin === allowed
-    )) {
+    if (!origin || allowedOrigins.some(allowed => origin === allowed)) {
       callback(null, true);
     } else {
       console.warn(`[CORS] Blocked request from origin: ${origin}`);
@@ -160,23 +96,11 @@ const corsOptions = {
   methods: ['POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type'],
   credentials: true,
-  maxAge: 86400 // 24 hours
+  maxAge: 86400
 };
 
+// Apply CORS middleware
 app.use(cors(corsOptions));
-// Or if you want some basic logging:
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', '*');
-  
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-  
-  next();
-});
-
 
 // Increase payload limits
 app.use(express.json({ limit: '50mb' }));
@@ -185,19 +109,6 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 // Handle preflight requests explicitly
 app.options('/api/chat', (req, res) => {
   res.status(200).end();
-});
-
-// Add preflight handler
-app.options('*', cors(corsOptions));
-
-
-// Error handling middleware
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('[Server] Error:', err);
-  res.status(500).json({ 
-    error: 'Internal server error',
-    message: process.env.NODE_ENV === 'development' ? err.message : undefined
-  });
 });
 
 app.post('/api/chat', async (req, res) => {
@@ -265,36 +176,23 @@ app.post('/api/chat', async (req, res) => {
 
     // Regular chat processing
     console.log('[Server] Processing regular chat request');
-    try {
-      const stream = await anthropic.messages.create({
-        model: 'claude-3-opus-20240229',
-        max_tokens: 4096,
-        messages,
-        system: CHAT_SYSTEM_PROMPT,
-        stream: true
-      });
+    const stream = await anthropic.messages.create({
+      model: 'claude-3-opus-20240229',
+      max_tokens: 4096,
+      messages,
+      system: CHAT_SYSTEM_PROMPT,
+      stream: true
+    });
 
-      for await (const chunk of stream) {
-        if (chunk.type === 'content_block_delta') {
-          res.write(`data: ${JSON.stringify({ text: chunk.delta.text })}\n\n`);
-        }
-      }
-
-      res.write('data: [DONE]\n\n');
-      res.end();
-    } catch (error) {
-      console.error('[Server] Chat API error:', error);
-      if (!res.headersSent) {
-        res.status(500).json({ 
-          error: 'Chat API error',
-          message: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
-      } else {
-        res.write(`data: ${JSON.stringify({ error: 'Chat API error' })}\n\n`);
-        res.write('data: [DONE]\n\n');
-        res.end();
+    for await (const chunk of stream) {
+      if (chunk.type === 'content_block_delta') {
+        res.write(`data: ${JSON.stringify({ text: chunk.delta.text })}\n\n`);
       }
     }
+
+    res.write('data: [DONE]\n\n');
+    res.end();
+
   } catch (error) {
     console.error('[Server] Error:', error);
     
