@@ -1,4 +1,108 @@
 import { ChatMessage } from '../types/chat';
+
+// Use relative path for API endpoint to work with proxy
+export const API_URL = '/api/chat';
+
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000;
+
+async function wait(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+export async function* getStreamingChatResponse(messages: ChatMessage[]) {
+  let retries = 0;
+
+  while (retries < MAX_RETRIES) {
+    try {
+      // Filter out messages with empty content
+      const validMessages = messages.filter(msg => {
+        if (Array.isArray(msg.content)) {
+          return msg.content.length > 0 && msg.content.every(c => 
+            (c.type === 'text' && c.text?.trim()) || 
+            (c.type === 'image' && c.source?.data)
+          );
+        }
+        return msg.content?.trim();
+      });
+
+      console.log('[ChatService] Starting request:', {
+        originalCount: messages.length,
+        validCount: validMessages.length,
+        lastMessage: validMessages[validMessages.length - 1],
+        isImageMessage: validMessages.some(msg => Array.isArray(msg.content))
+      });
+
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ messages: validMessages })
+      });
+
+      console.log('[ChatService] Response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log('[ChatService] Error response:', errorText);
+        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+      }
+
+      if (!response.body) {
+        throw new Error('Response body is null');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(5).trim();
+            
+            if (data === '[DONE]') return;
+            
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.error) throw new Error(parsed.error);
+              if (parsed.text) yield parsed.text;
+            } catch (e) {
+              console.warn('[ChatService] Parse error:', e);
+            }
+          }
+        }
+      }
+
+      return;
+
+    } catch (error) {
+      retries++;
+      console.error(`[ChatService] Attempt ${retries} failed:`, error);
+
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        if (retries < MAX_RETRIES) {
+          console.log(`[ChatService] Retrying in ${RETRY_DELAY}ms...`);
+          await wait(RETRY_DELAY * retries);
+          continue;
+        }
+      }
+
+      throw new Error(
+        `Chat service error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+}
+/* import { ChatMessage } from '../types/chat';
 import { cityContext } from './cityContext';
 
 // Use relative path for API endpoint to work with proxy
@@ -106,109 +210,7 @@ function validateMessageSize(messages: ChatMessage[]): void {
   }
 }
 
-/* export async function* getStreamingChatResponse(messages: ChatMessage[]) {
-  let retries = 0;
-  let fullResponse = '';
 
-  while (retries < MAX_RETRIES) {
-    try {
-      const validMessages = messages.filter(msg => {
-        if (Array.isArray(msg.content)) {
-          return msg.content.length > 0 && msg.content.every(c => 
-            (c.type === 'text' && c.text?.trim()) || 
-            (c.type === 'image' && c.source?.data)
-          );
-        }
-        return msg.content?.trim();
-      });
-
-      console.log('[ChatService] Starting request:', {
-        messageCount: validMessages.length,
-        lastMessage: validMessages[validMessages.length - 1]?.content
-      });
-
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ messages: validMessages }),
-        credentials: 'include'
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
-      }
-
-      if (!response.body) {
-        throw new Error('Response body is null');
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(5).trim();
-            if (data === '[DONE]') {
-              // Process complete response for location data
-              const jsonMatch = fullResponse.match(/{\s*"locations":\s*\[([\s\S]*?)\]\s*}/);
-              if (jsonMatch) {
-                try {
-                  const jsonData = JSON.parse(jsonMatch[0]);
-                  if (jsonData.locations?.[0]?.city) {
-                    console.log('[ChatService] Setting city context:', jsonData.locations[0].city);
-                    cityContext.setCurrentCity(jsonData.locations[0].city);
-                  }
-                } catch (e) {
-                  console.warn('[ChatService] Error parsing final JSON:', e);
-                }
-              }
-              return;
-            }
-            try {
-              const parsed = JSON.parse(data);
-              if (parsed.error) throw new Error(parsed.error);
-              if (parsed.text) {
-                fullResponse += parsed.text;
-                yield parsed.text;
-              }
-            } catch (e) {
-              console.warn('[ChatService] Parse error:', e);
-            }
-          }
-        }
-      }
-
-      return;
-
-    } catch (error) {
-      retries++;
-      console.error(`[ChatService] Attempt ${retries} failed:`, error);
-
-      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-        if (retries < MAX_RETRIES) {
-          await wait(RETRY_DELAY * retries);
-          continue;
-        }
-      }
-
-      throw new Error(
-        `Chat service error: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
-    }
-  }
-} */
   export async function* getStreamingChatResponse(messages: ChatMessage[]) {
     let retries = 0;
   
@@ -294,6 +296,8 @@ function validateMessageSize(messages: ChatMessage[]): void {
       }
     }
   }
+
+   */
 
 
 /* 

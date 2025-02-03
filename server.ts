@@ -353,6 +353,143 @@ app.listen(port, () => {
   console.log('[Server] API key configured:', !!anthropic.apiKey);
 });
 
+/* // Increase payload limits and add proper parsing
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Chat endpoint with improved error handling
+app.post('/api/chat', async (req, res) => {
+  try {
+    console.log('[Server] Processing chat request');
+    console.log('[Server] Request body:', JSON.stringify(req.body).substring(0, 200));
+    
+    const { messages } = req.body;
+    if (!messages || !Array.isArray(messages)) {
+      return res.status(400).json({ error: 'Invalid request format' });
+    }
+
+    // Filter out invalid messages
+    const validMessages = messages.filter(msg => {
+      if (Array.isArray(msg.content)) {
+        return msg.content.length > 0 && msg.content.every(c => 
+          (c.type === 'text' && c.text?.trim()) || 
+          (c.type === 'image' && c.source?.data)
+        );
+      }
+      return msg.content?.trim();
+    });
+
+    if (validMessages.length === 0) {
+      return res.status(400).json({ error: 'No valid messages provided' });
+    }
+
+    // Set up SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    const isVisionRequest = messages.some(msg => 
+      Array.isArray(msg.content) && 
+      msg.content.some(c => c.type === 'image')
+    );
+
+    if (isVisionRequest) {
+      try {
+        console.log('[Server] Processing vision request');
+        const response = await anthropic.messages.create({
+          model: 'claude-3-opus-20240229',
+          max_tokens: 4096,
+          messages: validMessages,
+          system: VISION_SYSTEM_PROMPT,
+          temperature: 0.2
+        });
+
+        const text = response.content[0].text;
+        console.log('[Server] Vision response:', text.substring(0, 200));
+        res.write(`data: ${JSON.stringify({ text })}\n\n`);
+      } catch (error) {
+        console.error('[Server] Vision API error:', error);
+        res.write(`data: ${JSON.stringify({ 
+          text: JSON.stringify({ error: "Failed to process image" })
+        })}\n\n`);
+      }
+    } else {
+      console.log('[Server] Processing chat request');
+      const stream = await anthropic.messages.create({
+        model: 'claude-3-opus-20240229',
+        max_tokens: 4096,
+        messages: validMessages,
+        system: CHAT_SYSTEM_PROMPT,
+        stream: true
+      });
+
+      for await (const chunk of stream) {
+        if (chunk.type === 'content_block_delta') {
+          res.write(`data: ${JSON.stringify({ text: chunk.delta.text })}\n\n`);
+        }
+      }
+    }
+
+    res.write('data: [DONE]\n\n');
+    res.end();
+  } catch (error) {
+    console.error('[Server] Error:', error);
+    
+    // If headers haven't been sent yet
+    if (!res.headersSent) {
+      if (error instanceof Error) {
+        const errorMessage = error.message;
+        
+        if (errorMessage.includes('401')) {
+          return res.status(401).json({ 
+            error: 'Authentication failed', 
+            details: 'Invalid API key'
+          });
+        }
+        
+        if (errorMessage.includes('429')) {
+          return res.status(429).json({ 
+            error: 'Rate limit exceeded', 
+            details: 'Please try again later'
+          });
+        }
+        
+        if (errorMessage.includes('413')) {
+          return res.status(413).json({ 
+            error: 'Payload too large',
+            details: 'Request content exceeds size limit'
+          });
+        }
+
+        return res.status(500).json({
+          error: 'Internal server error',
+          message: process.env.NODE_ENV === 'development' ? errorMessage : 'An error occurred'
+        });
+      }
+
+      return res.status(500).json({
+        error: 'Unknown error occurred'
+      });
+    }
+
+    // If headers were already sent, try to send error in stream format
+    try {
+      res.write(`data: ${JSON.stringify({ error: 'Stream error occurred' })}\n\n`);
+      res.write('data: [DONE]\n\n');
+      res.end();
+    } catch (e) {
+      console.error('Error while sending error response:', e);
+    }
+  }
+});
+
+const port = process.env.PORT || 3000;
+app.listen(port, () => {
+  console.log(`[Server] Running on port ${port}`);
+  console.log('[Server] Environment:', process.env.NODE_ENV);
+  console.log('[Server] API key configured:', !!anthropic.apiKey);
+});
+ */
 
 
 
