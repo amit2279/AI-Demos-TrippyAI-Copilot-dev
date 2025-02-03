@@ -145,6 +145,8 @@ export async function* getStreamingChatResponse(messages: ChatMessage[]) {
         headers: {
           'Content-Type': 'application/json'
         },
+        mode: 'cors', // Explicitly set CORS mode
+        credentials: 'omit', // Don't send credentials
         body: JSON.stringify({ messages: validMessages })
       });
 

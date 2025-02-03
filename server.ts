@@ -86,7 +86,7 @@ CRITICAL RULES:
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Configure CORS with error handling
+/* // Configure CORS with error handling
 const corsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
     const allowedOrigins = [
@@ -106,7 +106,33 @@ const corsOptions = {
   maxAge: 86400
 };
 
+app.use(cors(corsOptions)); */
+
+const corsOptions = {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    // Allow all Vercel preview deployments and your main domain
+    if (!origin || 
+        origin.includes('vercel.app') || 
+        origin.includes('localhost')) {
+      callback(null, true);
+      return;
+    }
+    
+    console.log('Rejected Origin:', origin);
+    callback(new Error('Not allowed by CORS'));
+  },
+  methods: ['POST', 'GET', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+  maxAge: 86400
+};
+
+// Apply CORS middleware
 app.use(cors(corsOptions));
+
+// Add preflight handler
+app.options('*', cors(corsOptions));
+
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {

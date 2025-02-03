@@ -193,6 +193,8 @@ export async function processLocationImages(images: File[]): Promise<Location[]>
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        mode: 'cors', // Explicitly set CORS mode
+        credentials: 'omit', // Don't send credentials
         body: JSON.stringify({
           messages: [{
             role: 'user',
