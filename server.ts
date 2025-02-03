@@ -158,10 +158,9 @@ const corsOptions = {
   methods: ['POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type'],
   credentials: true,
-  maxAge: 86400
+  maxAge: 86400 // 24 hours
 };
 
-// Apply CORS middleware
 app.use(cors(corsOptions));
 
 // Increase payload limits

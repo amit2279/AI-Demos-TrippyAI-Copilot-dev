@@ -1,3 +1,4 @@
+
 // pages/api/chat.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { Anthropic } from '@anthropic-ai/sdk';
@@ -8,15 +9,42 @@ const anthropic = new Anthropic({
 });
 
 // CORS middleware setup
-const corsMiddleware = cors({
-  origin: [
+/* const corsMiddleware = cors({
+  const allowedOrigins = [
     'http://localhost:5173',
-    'https://ai-demo-trippy-1d763gf6a-amits-projects-04ce3c09.vercel.app',
-    'https://ai-demo-trippy.vercel.app'
-  ],
+    'https://ai-demo-trippy.vercel.app',
+    /^https:\/\/ai-demo-trippy-[a-z0-9]+-amits-projects-04ce3c09\.vercel\.app$/ // Allow all preview deployments
+  ];
   methods: ['POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type'],
   credentials: true,
+}); */
+
+// CORS middleware setup
+const corsMiddleware = cors({
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'https://ai-demo-trippy.vercel.app',
+      /^https:\/\/ai-demo-trippy-[a-z0-9]+-amits-projects-04ce3c09\.vercel\.app$/ // Allow all preview deployments
+    ];
+    
+    if (!origin || allowedOrigins.some(allowed => {
+      if (allowed instanceof RegExp) {
+        return allowed.test(origin);
+      }
+      return origin === allowed;
+    })) {
+      callback(null, true);
+    } else {
+      console.warn(`[CORS] Blocked request from origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'],
+  credentials: true,
+  maxAge: 86400 // 24 hours
 });
 
 // Helper to run middleware
@@ -30,6 +58,29 @@ const runMiddleware = (req: NextApiRequest, res: NextApiResponse, fn: any) => {
     });
   });
 };
+
+
+// Add to server.ts or api/chat.ts
+app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('[Server] Error:', {
+    message: err.message,
+    origin: req.headers.origin,
+    method: req.method,
+    path: req.path,
+    headers: req.headers
+  });
+  
+  if (err.message.includes('CORS')) {
+    return res.status(403).json({
+      error: 'CORS error',
+      message: err.message,
+      origin: req.headers.origin
+    });
+  }
+  
+  next(err);
+});
+
 
 export const config = {
   api: {
