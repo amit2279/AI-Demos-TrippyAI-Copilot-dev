@@ -135,13 +135,26 @@ app.use(cors(corsOptions)); */
 // Apply CORS middleware
 app.use(cors(corsOptions)); */
 
+/* const isDev = process.env.NODE_ENV !== 'production';
+
+const corsOptions = {
+  origin: isDev ? '*' : [
+    'https://ai-demo-trippy-ai.vercel.app', // Your production domain
+    /\.vercel\.app$/ // Allows all vercel.app subdomains
+  ],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}; */
+
+
+
 // CORS configuration
 const corsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
     const allowedOrigins = [
       'http://localhost:5173',
-      'https://ai-demo-trippy.vercel.app',
-      'https://ai-demo-trippy-*-amits-projects-04ce3c09.vercel.app'
+      'https://ai-demo-trippy-ai.vercel.app',
+      /\.vercel\.app$/ // Allows all vercel.app subdomains
     ];
     
     if (!origin || allowedOrigins.some(allowed => 
@@ -155,13 +168,26 @@ const corsOptions = {
       callback(new Error('Not allowed by CORS'));
     }
   },
-  methods: ['POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type'],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
   credentials: true,
   maxAge: 86400 // 24 hours
 };
 
 app.use(cors(corsOptions));
+// Or if you want some basic logging:
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', '*');
+  
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
+  next();
+});
+
 
 // Increase payload limits
 app.use(express.json({ limit: '50mb' }));
