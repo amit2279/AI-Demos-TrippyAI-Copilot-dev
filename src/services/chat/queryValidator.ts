@@ -159,6 +159,8 @@ function cleanLocationText(text: string): string | undefined {
   console.log('[QueryValidator] Location text invalid after cleaning');
   return undefined;
 }
+
+
 /* export interface QueryValidationResult {
   type: 'weather' | 'travel' | 'general';
   location?: string;

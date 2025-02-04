@@ -14,6 +14,7 @@ interface ChatMessageProps {
   selectedLocation: Location | null;
 }
 
+
 export function ChatMessage({ 
   message,
   isStreaming = false,

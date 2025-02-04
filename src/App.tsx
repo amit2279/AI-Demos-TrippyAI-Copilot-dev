@@ -10,6 +10,8 @@ import { processStreamingMessage } from './services/chat/messageProcessor';
 import { validateQuery } from './services/chat/queryValidator';
 import { cityContext } from './services/cityContext';
 
+
+
 export default function App() {
   const initialCity = getRandomCity();
   const initialLocation = getCityAsLocation(initialCity);
