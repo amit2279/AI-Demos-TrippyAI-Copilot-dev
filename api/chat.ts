@@ -67,6 +67,7 @@ export default async function handler(
     );
 
     if (isVisionRequest) {
+      console.log('FILE CHAT - TS: ---------------------------- IN VISION REQUEST');
       const response = await anthropic.messages.create({
         model: 'claude-3-opus-20240229',
         max_tokens: 4096,

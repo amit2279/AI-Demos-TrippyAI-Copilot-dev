@@ -52,6 +52,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     );
 
     if (isVisionRequest) {
+      console.log('FILE SRC CHAT - TS: ---------------------------- IN VISION REQUEST');
       const response = await anthropic.messages.create({
         model: 'claude-3-opus-20240229',
         max_tokens: 4096,
@@ -63,6 +64,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const text = response.content[0].text;
       res.write(`data: ${JSON.stringify({ text })}\n\n`);
     } else {
+      console.log('FILE SRC CHAT - TS: ---------------------------- IN CHAT REQUEST')
       const stream = await anthropic.messages.create({
         model: 'claude-3-opus-20240229',
         max_tokens: 4096,
