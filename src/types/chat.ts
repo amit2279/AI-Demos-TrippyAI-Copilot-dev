@@ -1,31 +1,4 @@
-export interface Message {
-  id: string;
-  content: string;
-  sender: 'user' | 'bot';
-  timestamp: Date;
-  type?: 'text' | 'image';
-  imageUrl?: string;
-}
-
-export interface Location {
-  id: string;
-  name: string;
-  coordinates?: [number, number];
-  position?: {
-    lat: number;
-    lng: number;
-  };
-  rating: number;
-  reviews: number;
-  imageUrl: string;
-  description?: string;
-}
-
-export interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
-}
-/* import { NextApiRequest, NextApiResponse } from 'next';
+import { NextApiRequest, NextApiResponse } from 'next';
 import { Anthropic } from '@anthropic-ai/sdk';
 import cors from 'cors';
 
@@ -113,4 +86,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       message: error instanceof Error ? error.message : 'Unknown error'
     });
   }
-} */
+}
