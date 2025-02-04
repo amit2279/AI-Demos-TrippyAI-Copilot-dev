@@ -3,7 +3,7 @@ import { Anthropic } from '@anthropic-ai/sdk';
 import type { CorsOptions, CorsRequest } from 'cors';
 import cors from 'cors';
 
-const anthropic = new Anthropic({
+/* const anthropic = new Anthropic({
   apiKey: process.env.CLAUDE_API_KEY
 });
 
@@ -111,4 +111,4 @@ export default async function handler(
       }
     }
   }
-}
+} */
