@@ -7,6 +7,7 @@ const anthropic = new Anthropic({
   apiKey: process.env.CLAUDE_API_KEY
 });
 
+
 // Initialize CORS middleware
 const corsOptions: CorsOptions = {
   origin: [
@@ -77,6 +78,7 @@ export default async function handler(
       const text = response.content[0].text;
       res.write(`data: ${JSON.stringify({ text })}\n\n`);
     } else {
+      console.log('FILE CHAT - TS: ---------------------------- IN MESSAGE REQUEST');
       const stream = await anthropic.messages.create({
         model: 'claude-3-opus-20240229',
         max_tokens: 4096,

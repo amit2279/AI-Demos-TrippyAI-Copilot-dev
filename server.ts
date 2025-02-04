@@ -258,7 +258,7 @@ app.post('/api/chat', async (req, res) => {
 
     if (isVisionRequest) {
       try {
-        console.log('[Server] Processing vision request');
+        console.log('[Server] Processing vision request ----------------------------------------');
         const response = await anthropic.messages.create({
           model: 'claude-3-opus-20240229',
           max_tokens: 4096,
@@ -277,7 +277,7 @@ app.post('/api/chat', async (req, res) => {
         })}\n\n`);
       }
     } else {
-      console.log('[Server] Processing chat request');
+      console.log('[Server] Processing chat request --------------------------------------');
       const stream = await anthropic.messages.create({
         model: 'claude-3-opus-20240229',
         max_tokens: 4096,
