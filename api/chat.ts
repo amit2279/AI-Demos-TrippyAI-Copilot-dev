@@ -3,7 +3,7 @@ import { Anthropic } from '@anthropic-ai/sdk';
 import type { CorsOptions, CorsRequest } from 'cors';
 import cors from 'cors';
 
-/* const anthropic = new Anthropic({
+const anthropic = new Anthropic({
   apiKey: process.env.CLAUDE_API_KEY
 });
 
@@ -23,12 +23,12 @@ const corsOptions: CorsOptions = {
 function runMiddleware(
   req: Request,
   res: Response,
-  fn: (req: CorsRequest, res: Response, callback: (error: Error | null, success?: boolean) => void) => void
+  fn: (req: CorsRequest, res: Response, callback: (err: any) => void) => void
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    fn(req as CorsRequest, res, (error: Error | null) => {
-      if (error) {
-        return reject(error);
+    fn(req as CorsRequest, res, (result: any) => {
+      if (result instanceof Error) {
+        return reject(result);
       }
       return resolve();
     });
@@ -111,4 +111,4 @@ export default async function handler(
       }
     }
   }
-} */
+}

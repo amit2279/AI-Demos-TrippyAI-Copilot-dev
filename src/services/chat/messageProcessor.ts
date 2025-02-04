@@ -1,5 +1,6 @@
 import { Message } from '../../types/chat';
 
+
 interface ProcessedMessage {
   textContent: string;
   jsonContent: string | null;
