@@ -1,7 +1,8 @@
 import { ChatMessage } from '../types/chat';
 
-// Use relative path for API endpoint to work with proxy
-export const API_URL = '/api/chat';
+export const API_URL = process.env.NODE_ENV === 'production' 
+  ? 'https://ai-demo-trippy.vercel.app/api/chat'
+  : '/api/chat';
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
