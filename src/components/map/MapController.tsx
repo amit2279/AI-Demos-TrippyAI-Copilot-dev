@@ -40,8 +40,11 @@ export const MapController: React.FC<MapControllerProps> = ({
         clearTimeout(timeoutRef.current);
       }
 
+      console.log("[TimeoutRef]---------------------------",timeoutRef.current);
+
       // Set animation end timeout
       timeoutRef.current = setTimeout(() => {
+        console.log('[MapController] Animation complete');
         setIsAnimating(false);
       }, 2000); // Match duration with flyTo
     }

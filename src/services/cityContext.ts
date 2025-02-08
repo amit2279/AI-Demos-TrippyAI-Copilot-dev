@@ -5,7 +5,6 @@ class CityContextManager {
     private listeners: ((city: string) => void)[] = [];
   
     private constructor() {
-      console.log('[CityContext] Initializing with city: Salvador');
     }
   
     static getInstance(): CityContextManager {

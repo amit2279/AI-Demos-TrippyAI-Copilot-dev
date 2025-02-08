@@ -21,10 +21,7 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
 
   // Handle location selection
   useEffect(() => {
-    //if (locations.length === 0 || selectedLocation) return;
-    console.log('[MapUpdater] locations : -------- ', locations.length);
-
-    if (!selectedLocation) return; //|| isAnimating
+    if (!selectedLocation || isAnimating) return;
 
     // Prevent duplicate animations for same location
     const locationKey = `${selectedLocation.position.lat},${selectedLocation.position.lng}`;
@@ -35,7 +32,7 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
     const cityName = selectedLocation.city || extractCityName(selectedLocation.name);
     
     // Update city context
-    console.log('[MapUpdater] Setting city context:------- ', selectedLocation);
+    console.log('[MapUpdater] Setting city context:', cityName);
     cityContext.setCurrentCity(cityName);
 
     console.log('[MapUpdater] Flying to selected location:', {
@@ -51,27 +48,26 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
     setIsAnimating(true);
     
     try {
-    /*  map.setZoom(15, { 
+      /*map.setZoom(12, { 
         animate: true,
         duration: 1
-      }); */
+      });*/
 
       setTimeout(() => {
-        console.log('[MapUpdater] flyTo ---------- 1 ');
         map.flyTo(
           [selectedLocation.position.lat, selectedLocation.position.lng],
-          18,
+          17,
           {
-            duration: 1.8,
+            duration: 2.5,
             easeLinearity: 0.25
           }
-        ); 
+        );
 
         timeoutRef.current = setTimeout(() => {
           setIsAnimating(false);
           console.log('[MapUpdater] Animation complete');
         }, 2500);
-      }, 200);
+      }, 1000);
 
     } catch (error) {
       console.error('[MapUpdater] Error flying to location:', error);
@@ -87,7 +83,7 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
 
   // Handle locations update
   useEffect(() => {
-    if (locations.length === 0 || selectedLocation) return; //|| isAnimating
+    if (locations.length === 0 || isAnimating || selectedLocation) return;
 
     const locationsKey = JSON.stringify(locations.map(loc => loc.id));
     if (locationsKey === locationsRef.current) return;
@@ -143,10 +139,9 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
         });*/
 
         setTimeout(() => {
-          console.log('[MapUpdater] flyTo ---------- 2 ');
           map.flyTo(
             [location.position.lat, location.position.lng],
-            15,
+            17,
             {
               duration: 2.5,
               easeLinearity: 0.25
@@ -175,10 +170,9 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
 
         setTimeout(() => {
           const paddedBounds = bounds.pad(0.2);
-          console.log('[MapUpdater] flyToBounds ---------- 3 ');
           map.flyToBounds(paddedBounds, {
             padding: [50, 50],
-            maxZoom: 16,
+            maxZoom: 13,
             duration: 2.5,
             easeLinearity: 0.25
           });
@@ -218,7 +212,7 @@ function extractCityName(locationName: string): string {
   // If it's a landmark, try to get the city from the second part
   if (parts.length > 1) {
     // Remove any leading/trailing spaces and common words
-    return parts[0].trim()
+    return parts[1].trim()
       .replace(/^(in|at|near|the)\s+/i, '')
       .replace(/\s+(area|district|region)$/i, '');
   }

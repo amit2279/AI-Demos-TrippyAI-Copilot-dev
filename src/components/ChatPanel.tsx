@@ -12,6 +12,7 @@ interface ChatPanelProps {
   onSendMessage: (content: string) => void;
   isLoading: boolean;
   onLocationSelect: (location: Location | null) => void;
+  onLocationsUpdate: (locations: Location[]) => void;
   streamingMessage: Message | null;
   selectedLocation: Location | null;
   error: string | null;
@@ -27,6 +28,7 @@ export function ChatPanel({
   onLocationSelect,
   streamingMessage,
   selectedLocation,
+  onLocationsUpdate,
   error,
   weatherLocation,
   onImageSearch,
@@ -100,6 +102,7 @@ export function ChatPanel({
             key={message.id} 
             message={message} 
             onLocationSelect={onLocationSelect}
+            onLocationsUpdate={onLocationsUpdate}
             selectedLocation={selectedLocation}
             isStreaming={streamingMessage?.id === message.id}
           />

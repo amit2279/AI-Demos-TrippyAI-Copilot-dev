@@ -356,8 +356,10 @@ export function getCityAsLocation(city: City): Location {
 } */
 
 
-  import { Location } from '../types/chat';
+import { Location } from '../types/chat';
+import { cityContext } from './cityContext';
 
+  
 interface City {
   name: string;
   country: string;
@@ -696,6 +698,8 @@ export function getRandomCity(): City {
 }
 
 export function generateWelcomeMessage(city: City): string {
+  console.log('[City Service] Initializing city with:', city.name);
+  cityContext.setCurrentCity(city.name);
   return `Hi! I'm your travel assistant, currently looking at ${city.name}, ${city.country}, ${city.description}. Where would you like to explore today?`;
 }
 

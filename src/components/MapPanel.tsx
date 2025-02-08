@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import { Location } from '../types/chat';
 import { MapUpdater } from './map/MapUpdater';
@@ -26,6 +26,7 @@ interface MapPanelProps {
   isProcessingLocation?: boolean;
 }
 
+
 const ResetControl: React.FC<{ locations: Location[]; onReset: () => void }> = ({ 
   locations, 
   onReset 
@@ -41,7 +42,7 @@ const ResetControl: React.FC<{ locations: Location[]; onReset: () => void }> = (
     }, map.getBounds());
     
     map.flyToBounds(bounds.pad(0.2), {
-      duration: 3.5, // Increased duration
+      duration: 2, // Increased duration
       easeLinearity: 0.25
     });
 
@@ -75,16 +76,22 @@ export const MapPanel: React.FC<MapPanelProps> = ({
   const [activePopup, setActivePopup] = useState<string | null>(null);
   const mapRef = useRef<L.Map | null>(null);
 
-  // Log location updates for debugging
-  /* console.log('[MapPanel] Locations updated:', {
+  useEffect(() => {
+    console.log('[MapPanel] locations updated:', locations);
+  }, [locations]);
+
+
+   //Log location updates for debugging
+   console.log('[MapPanel] Locations updated: ------------------------', {
     count: locations.length,
     locations: locations.map(loc => ({
       name: loc.name,
       coordinates: [loc.position.lat, loc.position.lng]
     }))
-  } );*/
+  }  );
 
   // Validate coordinates before passing to markers
+
   const validLocations = locations.filter(loc => 
     loc.position && 
     !isNaN(loc.position.lat) && 
@@ -95,7 +102,7 @@ export const MapPanel: React.FC<MapPanelProps> = ({
     loc.position.lng <= 180
   );
 
-  //console.log('[MapPanel] Valid locations for markers:', validLocations.length);
+  console.log('[MapPanel] Valid locations for markers:', validLocations);
 
   const setMarkerRef = (id: string, ref: any) => {
     if (ref) {
@@ -177,3 +184,34 @@ export const MapPanel: React.FC<MapPanelProps> = ({
     </div>
   );
 };
+
+
+
+/* this is the chat.ts interface
+
+export interface Message {
+  id: string;
+  content: string;
+  sender: 'user' | 'bot';
+  timestamp: Date;
+}
+
+export interface Location {
+  id: string;
+  name: string;
+  position: {
+    lat: number;
+    lng: number;
+  };
+  rating: number;
+  reviews: number;
+  imageUrl: string;
+  description?: string;
+}
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+How can i update location from any file ? */

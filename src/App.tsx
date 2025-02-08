@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { ChatPanel } from './components/ChatPanel';
 import { MapPanel } from './components/MapPanel';
 import { MapToggle } from './components/MapToggle';
@@ -10,18 +10,60 @@ import { processStreamingMessage } from './services/chat/messageProcessor';
 import { validateQuery } from './services/chat/queryValidator';
 import { cityContext } from './services/cityContext';
 
+/* // src/App.tsx
+
+// First, memoize the initial city and location
+const initialCity = React.useMemo(() => getRandomCity(), []);
+const initialLocation = React.useMemo(() => getCityAsLocation(initialCity), [initialCity]);
+
+// Then, memoize the initial message
+const initialMessage = React.useMemo(() => ({
+  id: '1',
+  content: generateWelcomeMessage(initialCity),
+  sender: 'bot',
+  timestamp: new Date()
+}), [initialCity]);
+
+// Use the memoized message in useState
+const [messages, setMessages] = useState<Message[]>([initialMessage]);
+ */
+
 
 
 export default function App() {
-  const initialCity = getRandomCity();
-  const initialLocation = getCityAsLocation(initialCity);
+  // Initialize city service only once when app starts
+  const initialCity = React.useMemo(() => getRandomCity(), []);
+  const initialLocation = React.useMemo(() => getCityAsLocation(initialCity), [initialCity]);
 
-  const [messages, setMessages] = useState<Message[]>([{
+/*   const [messages, setMessages] = useState<Message[]>([{
     id: '1',
     content: generateWelcomeMessage(initialCity),
     sender: 'bot',
     timestamp: new Date()
-  }]);
+  }]); */
+
+  // Then, memoize the initial message
+  const initialMessage = React.useMemo(() => ({
+    id: '1',
+    content: generateWelcomeMessage(initialCity),
+    sender: 'bot',
+    timestamp: new Date()
+  }), [initialCity]);
+
+  // Use the memoized message in useState
+  const [messages, setMessages] = useState<Message[]>([initialMessage]);
+  //console.log("generateWelcomeMessage being called here ------------------")
+
+  const handleLocationsUpdate = useCallback((newLocations: Location[]) => {
+    console.log('[App] Updating locations:', newLocations);
+    setLocations(newLocations);
+  }, []); // Empty dependency array since this function never needs to change
+
+
+  // Set initial city context only once
+  useEffect(() => {
+    cityContext.setCurrentCity(initialCity.name);
+  }, [initialCity.name]);
 
   const [locations, setLocations] = useState<Location[]>([initialLocation]);
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(initialLocation);
@@ -34,10 +76,14 @@ export default function App() {
   const [isProcessingImages, setIsProcessingImages] = useState(false);
 
   const handleLocationSelect = useCallback((location: Location | null) => {
-    console.log('[App] Location selected:', location?.name);
+    //console.log('[App] Location selected:', location?.name);
     setSelectedLocation(location);
   }, []);
 
+  useEffect(() => {
+    console.log('[App] Locations state updated:', locations);
+  }, [locations]);
+  
   const handleImageSearch = useCallback(async (images: File[]) => {
     setIsProcessingImages(true);
     try {
@@ -57,6 +103,7 @@ export default function App() {
       
       setMessages(prev => [...prev, botMessage]);
       setLocations(newLocations);
+      console.log('[App] Selected location:][][][][][][][][][][][][][][][]][]', newLocations);
       setSelectedLocation(newLocations[0]);
     } catch (error) {
       console.error('[App] Error processing images:', error);
@@ -82,11 +129,10 @@ export default function App() {
     setIsLoading(true);
     setIsStreaming(true);
     setSelectedLocation(null);
-
+  
     if (validation.type === 'weather') {
-      const currentCity = cityContext.getCurrentCity();
-      const weatherLocation = validation.location || currentCity;
-      console.log('[App] Weather query for location:', weatherLocation);
+      // Use current city context without updating it
+      const weatherLocation = validation.location || cityContext.getCurrentCity();
       setCurrentWeatherLocation(weatherLocation);
       
       const botMessage: Message = {
@@ -95,7 +141,7 @@ export default function App() {
         sender: 'bot',
         timestamp: new Date()
       };
-
+  
       setMessages(prev => [...prev, botMessage]);
       setIsLoading(false);
       setIsStreaming(false);
@@ -164,12 +210,14 @@ export default function App() {
           messages={messages}
           onSendMessage={handleSendMessage}
           isLoading={isLoading}
+          onLocationsUpdate={handleLocationsUpdate}
           onLocationSelect={handleLocationSelect}
           streamingMessage={currentStreamingMessage}
           selectedLocation={selectedLocation}
           error={error}
           weatherLocation={currentWeatherLocation}
           onImageSearch={handleImageSearch}
+          isProcessingImages={isProcessingImages}
         />
       </div>
       
@@ -190,6 +238,10 @@ export default function App() {
     </div>
   );
 }
+
+
+
+
 /* import React, { useState, useCallback, useEffect } from 'react';
 import { ChatPanel } from './components/ChatPanel';
 import { MapPanel } from './components/MapPanel';

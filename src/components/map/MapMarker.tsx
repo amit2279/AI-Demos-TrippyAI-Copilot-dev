@@ -82,6 +82,8 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({
     window.open(mapsUrl, '_blank');
   };
 
+  console.log('[MapMarkers] : -------- ', MapMarkers);
+
   return (
     <>
       {locations.map((location) => (
@@ -103,7 +105,7 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({
                     className="w-full h-full object-cover rounded-lg"
                     onError={(e) => {
                       e.currentTarget.src = `https://source.unsplash.com/800x600/?${encodeURIComponent(
-                        location.name + ' landmark'
+                        location.name + ' landmark'  
                       )}`;
                     }}
                   />

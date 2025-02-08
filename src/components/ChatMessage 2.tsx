@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MessageCircle, Compass } from 'lucide-react';
 import { Message, Location } from '../types/chat';
 import ReactMarkdown from 'react-markdown';
@@ -15,6 +15,7 @@ interface ChatMessageProps {
   selectedLocation: Location | null;
 }
 
+
 export function ChatMessage({ 
   message,
   onLocationsUpdate,
@@ -27,24 +28,8 @@ export function ChatMessage({
   const [showLocations, setShowLocations] = useState(false);
   const [weatherLocation, setWeatherLocation] = useState<string | null>(null);
   const isBot = message.sender === 'bot';
-  const processedRef = useRef(false);
-
-  // Debug logging for props changes
-  useEffect(() => {
-    console.log('[ChatMessage] Props updated:', {
-      messageId: message.id,
-      content: message.content?.substring(0, 100),
-      isStreaming,
-      selectedLocation: selectedLocation?.name
-    });
-  }, [message, isStreaming, selectedLocation]);
 
   useEffect(() => {
-    // Reset processed state when message changes
-    if (message.content !== displayContent) {
-      processedRef.current = false;
-    }
-
     if (!message.content) {
       setDisplayContent(isStreaming ? 'Thinking...' : '');
       return;
@@ -65,8 +50,8 @@ export function ChatMessage({
         return; // Don't process locations for weather messages
       }
 
-      // Process locations if JSON content exists, not streaming, and not already processed
-      if (jsonContent && !isStreaming && !processedRef.current) {
+      // Process locations if JSON content exists and streaming is complete
+      if (jsonContent && !isStreaming) {
         try {
           const data = JSON.parse(jsonContent);
           if (data.locations && Array.isArray(data.locations)) {
@@ -87,16 +72,9 @@ export function ChatMessage({
 
             // Only set locations if we have valid ones
             if (processedLocations.length > 0) {
-              console.log('[ChatMessage] Processing new locations:', processedLocations);
-              
-              // Update parent component
-              onLocationsUpdate(processedLocations);
-              
-              // Update local state
+              console.log('[ChatMessage] Setting locations:', processedLocations);
+              onLocationsUpdate(processedLocations); // Use the handler here
               setLocations(processedLocations);
-              
-              // Mark as processed to prevent duplicate processing
-              processedRef.current = true;
               
               // Select first location after a delay to ensure map is ready
               setTimeout(() => {
@@ -114,14 +92,7 @@ export function ChatMessage({
       console.error('[ChatMessage] Error processing message:', error);
       setDisplayContent(message.content);
     }
-  }, [message, isStreaming, onLocationSelect, onLocationsUpdate, displayContent]);
-
-  // Debug logging for locations updates
-  useEffect(() => {
-    if (locations.length > 0) {
-      console.log('[ChatMessage] Locations state updated:', locations);
-    }
-  }, [locations]);
+  }, [message, isStreaming, onLocationSelect, onLocationsUpdate]);
 
   return (
     <div className="space-y-4">
