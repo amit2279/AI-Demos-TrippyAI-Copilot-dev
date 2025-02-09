@@ -94,7 +94,7 @@ export const LocationRecommendation: React.FC<LocationRecommendationProps> = ({
             onClick={handleMapsClick}
           >
             <ExternalLink size={14} />
-            Open in Map
+            Open in Maps
           </button>
         </div>
       </div>

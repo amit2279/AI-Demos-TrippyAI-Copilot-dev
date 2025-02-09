@@ -35,6 +35,8 @@ For all other location queries, format your response in two parts:
   {
     "name": "Location Name",
     "coordinates": [latitude, longitude],
+    "city": "City Name",
+    "country": "Country Name",
     "rating": 4.5,
     "reviews": 1000,
     "image": "https://images.unsplash.com/photo-SPECIFIC-PHOTO-ID?w=800&h=600&fit=crop"
@@ -59,6 +61,7 @@ const CHAT_SYSTEM_PROMPT = `You are a knowledgeable travel assistant. For ALL lo
      {
        "name": "Location Name",
        "city": "City Name",  // CRITICAL: Always include city name
+       "country": "Country Name",
        "coordinates": [latitude, longitude],
        "rating": 4.5,
        "reviews": 1000,
@@ -69,9 +72,9 @@ const CHAT_SYSTEM_PROMPT = `You are a knowledgeable travel assistant. For ALL lo
 2. For GENERAL location queries (e.g., "tell me about X", "what is X like"):
    - Provide a brief 2-3 line summary about the place
    - Ask if they would like to know more
-   - ALWAYS include a single location JSON for the main city/place:
+   - ALWAYS include a single location JSON for the main city/place at the end of the text response:
    
-   {"name": "City Name, Country","coordinates": [latitude, longitude],description: 'ancient temples and traditional gardens'}
+   {"name": "City Name, Country","city": "City Name", "coordinates": [latitude, longitude],description: 'ancient temples and traditional gardens'}
 
 3. For Weather Queries:
    - If query contains "weather", "temperature", "climate", "forecast":
