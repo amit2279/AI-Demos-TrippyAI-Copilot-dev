@@ -337,7 +337,10 @@ Remember:
    - NO additional information
 
 CRITICAL: NEVER skip the locations JSON for any location-related query, as it's needed for map navigation!`;
- */
+ 
+,
+       "image": "https://images.unsplash.com/photo-ID?w=800&h=600&fit=crop"
+*/
 
 const CHAT_SYSTEM_PROMPT = `You are a knowledgeable travel assistant. For ALL location-related queries, follow these rules:
 
@@ -360,8 +363,7 @@ const CHAT_SYSTEM_PROMPT = `You are a knowledgeable travel assistant. For ALL lo
        "country": "Country Name",
        "coordinates": [latitude, longitude],
        "rating": 4.5,
-       "reviews": 1000,
-       "image": "https://images.unsplash.com/photo-ID?w=800&h=600&fit=crop"
+       "reviews": 1000
      }
    ] }
 

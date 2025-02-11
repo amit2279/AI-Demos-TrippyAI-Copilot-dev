@@ -700,7 +700,7 @@ export function getRandomCity(): City {
 export function generateWelcomeMessage(city: City): string {
   console.log('[City Service] Initializing city with:', city.name);
   cityContext.setCurrentCity(city.name);
-  return `Hi! I'm your travel assistant, currently looking at ${city.name}, ${city.country}, ${city.description}. Where would you like to explore today?`;
+  return `Hi! I'm your travel assistant, currently looking at ${city.name}, ${city.country}, ${city.description}. What would you like to explore today?`;
 }
 
 export function getCityAsLocation(city: City): Location {

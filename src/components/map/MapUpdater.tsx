@@ -60,9 +60,9 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
         console.log('[MapUpdater] flyTo ---------- 1 ');
         map.flyTo(
           [selectedLocation.position.lat, selectedLocation.position.lng],
-          18,
+          17,
           {
-            duration: 1.8,
+            duration: 2.3,
             easeLinearity: 0.25
           }
         ); 

@@ -64,15 +64,14 @@ const CHAT_SYSTEM_PROMPT = `You are a knowledgeable travel assistant. For ALL lo
        "country": "Country Name",
        "coordinates": [latitude, longitude],
        "rating": 4.5,
-       "reviews": 1000,
-       "image": "https://images.unsplash.com/photo-ID?w=800&h=600&fit=crop"
+       "reviews": 1000
      }
    ] }
 
 2. For GENERAL location queries (e.g., "tell me about X", "what is X like"):
    - Provide a brief 2-3 line summary about the place
    - Ask if they would like to know more
-   - ALWAYS include a single location JSON for the main city/place at the end of the text response:
+   - ALWAYS include a single location JSON for the main city/place:
    
    {"name": "City Name, Country","city": "City Name", "coordinates": [latitude, longitude],description: 'ancient temples and traditional gardens'}
 
@@ -94,6 +93,8 @@ Remember:
 - Only generate location cards when explicitly asked for recommendations
 - ALWAYS include city name in location data for proper context updates
 - CRITICAL: NEVER skip the locations JSON for any location-related query, as it's needed for map navigation!`;
+
+
  
 /* const CHAT_SYSTEM_PROMPT = `You are a knowledgeable travel assistant. For ALL location-related queries, follow these rules:
 
