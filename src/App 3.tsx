@@ -9,7 +9,9 @@ import { processLocationImages, createImageMessage } from './services/imageProce
 import { processStreamingMessage } from './services/chat/messageProcessor';
 import { validateQuery } from './services/chat/queryValidator';
 import { cityContext } from './services/cityContext';
-import { Itinerary } from './types/itinerary';
+import { TripPlannerModal } from './components/TripPlanner/Modal';
+import { TripDetails, Itinerary } from './types/itinerary';
+import { generateItinerary } from './services/itinerary/builder';
 import { ItineraryPanel } from './components/TripPlanner/ItineraryPanel';
 
 export default function App() {
@@ -34,8 +36,8 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [currentWeatherLocation, setCurrentWeatherLocation] = useState<string | null>(null);
   const [isProcessingImages, setIsProcessingImages] = useState(false);
+  const [showTripPlanner, setShowTripPlanner] = useState(false);
   const [currentItinerary, setCurrentItinerary] = useState<Itinerary | null>(null);
-  const [showItinerary, setShowItinerary] = useState(false);
 
   // Set initial city context only once
   useEffect(() => {
@@ -78,6 +80,36 @@ export default function App() {
       setIsProcessingImages(false);
     }
   }, []);
+
+  const handleTripPlannerSubmit = useCallback(async (details: TripDetails) => {
+    setShowTripPlanner(false);
+    setIsLoading(true);
+
+    try {
+      const itinerary = await generateItinerary(details);
+      setCurrentItinerary(itinerary);
+      
+      // Update locations with the first day's activities
+      if (itinerary.days[0]?.activities.length > 0) {
+        const locations = itinerary.days[0].activities.map(activity => activity.location);
+        setLocations(locations);
+        setSelectedLocation(locations[0]);
+      }
+    } catch (error) {
+      console.error('[App] Error generating itinerary:', error);
+      setError('Failed to generate itinerary');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+/*   const handleQuickAction = useCallback((action: string) => {
+    if (action === 'plan') {
+      setShowTripPlanner(true);
+    } else {
+      handleSendMessage(action);
+    }
+  }, []); */
 
   const handleSendMessage = useCallback(async (content: string) => {
     setError(null);
@@ -168,12 +200,6 @@ export default function App() {
     }
   }, [messages]);
 
-  const handleItineraryUpdate = useCallback((itinerary: Itinerary) => {
-    console.log('[App] Updating itinerary:', itinerary);
-    setCurrentItinerary(itinerary);
-    setShowItinerary(true);
-  }, []);
-
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Left Panel - Chat */}
@@ -190,12 +216,12 @@ export default function App() {
           weatherLocation={currentWeatherLocation}
           onImageSearch={handleImageSearch}
           isProcessingImages={isProcessingImages}
-          onItineraryUpdate={handleItineraryUpdate}
+          onActionClick={handleQuickAction}
         />
       </div>
       
       {/* Center Panel - Map */}
-      <div className={`flex-1 relative ${showItinerary ? 'mr-[400px]' : ''}`}>
+      <div className="flex-1 relative">
         <div className="absolute top-4 right-4 z-50">
           <MapToggle view={mapView} onToggle={setMapView} />
         </div>
@@ -211,14 +237,12 @@ export default function App() {
       </div>
 
       {/* Right Panel - Itinerary */}
-      {showItinerary && currentItinerary && (
-        <div className="w-[400px] flex-shrink-0 bg-white shadow-lg fixed right-0 top-0 bottom-0 z-40 overflow-y-auto">
+      {currentItinerary && (
+        <div className="w-[400px] flex-shrink-0 bg-white z-40 relative shadow-lg overflow-y-auto">
           <ItineraryPanel
             itinerary={currentItinerary}
             onLocationSelect={(locationId) => {
-              const location = currentItinerary.days
-                .flatMap(day => day.activities)
-                .find(activity => activity.location.id === locationId)?.location;
+              const location = locations.find(loc => loc.id === locationId);
               if (location) {
                 handleLocationSelect(location);
               }
@@ -226,6 +250,15 @@ export default function App() {
             selectedLocationId={selectedLocation?.id}
           />
         </div>
+      )}
+
+      {/* Modals */}
+      {showTripPlanner && (
+        <TripPlannerModal
+          onClose={() => setShowTripPlanner(false)}
+          onSubmit={handleTripPlannerSubmit}
+          isLoading={isLoading}
+        />
       )}
     </div>
   );

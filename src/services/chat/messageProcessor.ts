@@ -1,5 +1,107 @@
 import { Message } from '../../types/chat';
 import { cityContext } from '../cityContext';
+import { Itinerary } from '../../types/itinerary';
+
+interface ProcessedMessage {
+  textContent: string;
+  jsonContent: string | null;
+  weatherLocation?: string;
+  itinerary?: Itinerary | null;
+}
+
+export function processStreamingMessage(content: string): ProcessedMessage {
+  try {
+    console.log('[MessageProcessor] Processing content:', {
+      length: content.length,
+      preview: content.substring(0, 100) + '...',
+      timestamp: new Date().toISOString()
+    });
+
+    // Check for weather queries first
+    const weatherKeywords = /weather|temperature|forecast|climate/i;
+    if (weatherKeywords.test(content)) {
+      // Weather processing logic remains the same
+      const checkWeatherMatch = content.match(/Let me check (?:the )?(?:weather|temperature|forecast|climate)(?: in| at| for)?\s+([^.!?\n]+)/i);
+      const weatherMatch = content.match(/(?:weather|temperature|forecast|climate).*?(?:in|at|for)\s+([^.!?,\n]+)/i);
+      let weatherLocation = (checkWeatherMatch || weatherMatch)?.[1]?.trim();
+      
+      if (weatherLocation) {
+        const locationParts = weatherLocation.split(',');
+        let cityPart = locationParts[locationParts.length - 1].trim();
+        if (locationParts.length > 1) {
+          cityPart = locationParts[0].trim();
+        }
+        cityPart = cityPart
+          .replace(/(?:restaurant|cafe|hotel|the|bar|grill|pub|bistro|lounge)\b/gi, '')
+          .replace(/^[\s\W]+|[\s\W]+$/g, '')
+          .trim();
+        
+        return {
+          textContent: content,
+          jsonContent: null,
+          weatherLocation: cityPart
+        };
+      }
+    }
+
+    // Look for itinerary JSON first
+    const itineraryMatch = content.match(/{\s*"tripDetails":\s*{[\s\S]*"budgetSummary":\s*{[\s\S]*}}/);
+    if (itineraryMatch) {
+      try {
+        console.log('[MessageProcessor] Found potential itinerary JSON');
+        const itineraryJson = itineraryMatch[0];
+        const itinerary = JSON.parse(itineraryJson);
+        
+        // Validate itinerary structure
+        if (itinerary.tripDetails && itinerary.days && itinerary.budgetSummary) {
+          console.log('[MessageProcessor] Valid itinerary JSON found');
+          return {
+            textContent: content.replace(itineraryJson, '').trim(),
+            jsonContent: null,
+            itinerary
+          };
+        }
+      } catch (e) {
+        console.error('[MessageProcessor] Failed to parse itinerary JSON:', e);
+      }
+    }
+
+    // Then look for locations JSON
+    const locationsMatch = content.match(/{\s*"locations":\s*\[([\s\S]*?)\]\s*}/);
+    if (locationsMatch) {
+      try {
+        console.log('[MessageProcessor] Found locations JSON');
+        const locationsJson = locationsMatch[0];
+        return {
+          textContent: content.replace(locationsJson, '').trim(),
+          jsonContent: locationsJson
+        };
+      } catch (e) {
+        console.error('[MessageProcessor] Failed to parse locations JSON:', e);
+      }
+    }
+
+    // No JSON found
+    return { 
+      textContent: content.replace(/{\s*".*$/g, '').trim(),
+      jsonContent: null
+    };
+
+  } catch (error) {
+    console.error('[MessageProcessor] Error processing message:', {
+      error,
+      contentLength: content.length,
+      timestamp: new Date().toISOString()
+    });
+    return { 
+      textContent: content.replace(/{\s*".*$/g, '').trim(),
+      jsonContent: null
+    };
+  }
+}
+
+/* import { Message } from '../../types/chat';
+import { cityContext } from '../cityContext';
 
 interface ProcessedMessage {
   textContent: string;
@@ -152,7 +254,7 @@ export function processStreamingMessage(content: string): ProcessedMessage {
     return { textContent: cleanContent, jsonContent: null };
   }
 }
-
+ */
 
 
 

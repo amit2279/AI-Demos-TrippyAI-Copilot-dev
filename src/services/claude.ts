@@ -12,6 +12,153 @@ async function wait(ms: number) {
 
 export async function* getStreamingChatResponse(messages: ChatMessage[]) {
   let retries = 0;
+  let fullResponse = '';
+
+  while (retries < MAX_RETRIES) {
+    try {
+      // Filter out messages with empty content
+      const validMessages = messages.filter(msg => {
+        if (Array.isArray(msg.content)) {
+          return msg.content.length > 0 && msg.content.every(c => 
+            (c.type === 'text' && c.text?.trim()) || 
+            (c.type === 'image' && c.source?.data)
+          );
+        }
+        return msg.content?.trim();
+      });
+
+      console.log('[Claude Service] Starting request:', {
+        messageCount: validMessages.length,
+        lastMessage: validMessages[validMessages.length - 1]?.content,
+        timestamp: new Date().toISOString()
+      });
+
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ messages: validMessages })
+      });
+
+      console.log('[Claude Service] Response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[Claude Service] Error response:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        });
+        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+      }
+
+      if (!response.body) {
+        throw new Error('Response body is null');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let chunkCount = 0;
+      let totalChars = 0;
+
+      console.log('[Claude Service] Starting to read response stream');
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) {
+          console.log('[Claude Service] Stream complete:', {
+            totalChunks: chunkCount,
+            totalCharacters: totalChars,
+            fullResponse: fullResponse.substring(0, 500) + '...' // Log first 500 chars
+          });
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(5).trim();
+            
+            if (data === '[DONE]') {
+              console.log('[Claude Service] Received DONE signal');
+              continue;
+            }
+            
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.error) {
+                console.error('[Claude Service] Error in stream:', parsed.error);
+                throw new Error(parsed.error);
+              }
+              if (parsed.text) {
+                chunkCount++;
+                totalChars += parsed.text.length;
+                fullResponse += parsed.text;
+                
+                // Log every 10th chunk to avoid console spam
+                if (chunkCount % 10 === 0) {
+                  console.log('[Claude Service] Processing chunk:', {
+                    number: chunkCount,
+                    length: parsed.text.length,
+                    preview: parsed.text.substring(0, 100) + '...'
+                  });
+                }
+                
+                yield parsed.text;
+              }
+            } catch (e) {
+              console.warn('[Claude Service] Parse error:', {
+                error: e,
+                data: data.substring(0, 100) + '...'
+              });
+            }
+          }
+        }
+      }
+
+      return;
+
+    } catch (error) {
+      retries++;
+      console.error(`[Claude Service] Attempt ${retries} failed:`, {
+        error,
+        timestamp: new Date().toISOString()
+      });
+
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        if (retries < MAX_RETRIES) {
+          console.log(`[Claude Service] Retrying in ${RETRY_DELAY * retries}ms...`);
+          await wait(RETRY_DELAY * retries);
+          continue;
+        }
+      }
+
+      throw new Error(
+        `Chat service error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+}
+
+/* import { ChatMessage } from '../types/chat';
+
+// Use relative path for API endpoint to work with proxy
+export const API_URL = '/api/chat';
+
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000;
+
+async function wait(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+export async function* getStreamingChatResponse(messages: ChatMessage[]) {
+  let retries = 0;
 
   while (retries < MAX_RETRIES) {
     try {
@@ -101,7 +248,7 @@ export async function* getStreamingChatResponse(messages: ChatMessage[]) {
       );
     }
   }
-}
+} */
 /* import { ChatMessage } from '../types/chat';
 import { cityContext } from './cityContext';
 

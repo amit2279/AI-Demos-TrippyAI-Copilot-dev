@@ -53,49 +53,97 @@ export async function findPlace(location: Location): Promise<string> {
     }
     lastRequestTimestamp = Date.now();
 
-    // Log request details for debugging
     console.log('[PlacesService] Finding place:', {
       name: location.name,
-      coordinates: [location.position.lat, location.position.lng],
-      timestamp: new Date().toISOString()
+      coordinates: [location.position.lat, location.position.lng]
     });
 
     const service = await initPlacesService();
     
     return new Promise((resolve) => {
-      // Optimize search query
+      // Create a more precise search query
       const searchQuery = location.name
-        .replace(/[^\w\s,]/g, '') // Remove special characters
-        .split(/\s*,\s*/)[0];     // Take only the first part before any comma
-      
+        .split(/\s*,\s*/)[0] // Take only the first part before any comma
+        .trim();
+
+      // First try with exact name and location bias
       const request: google.maps.places.FindPlaceFromQueryRequest = {
         query: searchQuery,
-        fields: ['place_id', 'geometry'],
+        fields: ['place_id', 'name', 'geometry', 'formatted_address'],
         locationBias: {
           center: { lat: location.position.lat, lng: location.position.lng },
-          radius: 5000 // 5km radius
+          radius: 1000 // 1km radius for precise matching
         }
       };
 
-      service.findPlaceFromQuery(request, (results, status) => {
-        let url: string;
+      service.findPlaceFromQuery(request, async (results, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK && results?.[0]) {
+          // Verify if the result is a close match
+          const result = results[0];
+          const resultLat = result.geometry?.location?.lat();
+          const resultLng = result.geometry?.location?.lng();
+          
+          if (resultLat && resultLng) {
+            // Calculate distance between result and expected location
+            const distance = calculateDistance(
+              location.position.lat,
+              location.position.lng,
+              resultLat,
+              resultLng
+            );
 
-        if (status === google.maps.places.PlacesServiceStatus.OK && results?.[0]?.place_id) {
-          url = `https://www.google.com/maps/place/?q=place_id:${results[0].place_id}`;
-          console.log('[PlacesService] Found place_id:', results[0].place_id);
-        } else {
-          // Fallback to coordinates
-          url = `https://www.google.com/maps/search/?api=1&query=${location.position.lat},${location.position.lng}`;
-          console.log('[PlacesService] Falling back to coordinates');
+            // If distance is less than 1km, consider it a match
+            if (distance < 1) {
+              const url = `https://www.google.com/maps/place/?q=place_id:${result.place_id}`;
+              
+              // Cache the result
+              placeCache.set(cacheKey, {
+                url,
+                timestamp: Date.now()
+              });
+
+              console.log('[PlacesService] Found exact match:', {
+                name: result.name,
+                distance: `${(distance * 1000).toFixed(0)}m`
+              });
+
+              resolve(url);
+              return;
+            }
+          }
         }
 
-        // Cache the result
-        placeCache.set(cacheKey, {
-          url,
-          timestamp: Date.now()
-        });
+        // If no exact match found, try nearby search
+        const nearbyRequest: google.maps.places.PlaceSearchRequest = {
+          location: { lat: location.position.lat, lng: location.position.lng },
+          radius: 1000,
+          keyword: searchQuery
+        };
 
-        resolve(url);
+        service.nearbySearch(nearbyRequest, (nearbyResults, nearbyStatus) => {
+          if (nearbyStatus === google.maps.places.PlacesServiceStatus.OK && nearbyResults?.[0]) {
+            const url = `https://www.google.com/maps/search/?api=1&query=${
+              encodeURIComponent(location.name)
+            }&query_place_id=${nearbyResults[0].place_id}`;
+
+            // Cache the result
+            placeCache.set(cacheKey, {
+              url,
+              timestamp: Date.now()
+            });
+
+            console.log('[PlacesService] Found nearby match:', nearbyResults[0].name);
+            resolve(url);
+          } else {
+            // Fallback to coordinates if no matches found
+            const url = `https://www.google.com/maps/search/?api=1&query=${
+              encodeURIComponent(location.name)
+            }@${location.position.lat},${location.position.lng}`;
+
+            console.log('[PlacesService] No matches found, using coordinates');
+            resolve(url);
+          }
+        });
       });
     });
   } catch (error) {
@@ -103,6 +151,23 @@ export async function findPlace(location: Location): Promise<string> {
     // Fallback to coordinates
     return `https://www.google.com/maps/search/?api=1&query=${location.position.lat},${location.position.lng}`;
   }
+}
+
+// Calculate distance between two points in kilometers using the Haversine formula
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth's radius in kilometers
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+function toRad(degrees: number): number {
+  return degrees * (Math.PI / 180);
 }
 
 // Clean up expired cache entries periodically
@@ -114,6 +179,9 @@ setInterval(() => {
     }
   }
 }, CACHE_DURATION);
+
+
+
 
 /* // src/services/places.ts
 import { Location } from '../types/chat';
