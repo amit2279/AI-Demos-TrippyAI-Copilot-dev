@@ -134,28 +134,30 @@ export function ChatMessage({
                     <span className="inline-block w-2 h-4 ml-1 bg-gray-400 animate-pulse" />
                   )}
                 </div>
-                <span className="text-xs text-gray-500 mt-2 block">
-                  {message.timestamp.toLocaleTimeString()}
-                </span>
 
-                {isBot && !isStreaming && displayContent && (
-                  <button
-                    onClick={handleCopy}
-                    className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 transition-colors mt-2"
-                  >
-                    {copied ? (
-                      <>
-                        <Check size={14} className="text-green-500" />
-                        <span className="text-green-500">Copied!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy size={14} />
-                        <span>Copy</span>
-                      </>
-                    )}
-                  </button>
-                )}
+                <div className="flex justify-between items-center mt-2">
+                  {isBot && !isStreaming && displayContent && (
+                    <button
+                      onClick={handleCopy}
+                      className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                    >
+                      {copied ? (
+                        <>
+                          <Check size={14} className="text-green-500" />
+                          <span className="text-green-500">Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy size={14} />
+                          <span>Copy</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                  <span className="text-xs text-gray-500">
+                    {message.timestamp.toLocaleTimeString()}
+                  </span>
+                </div>
               </div>
             </div>
           )}
@@ -170,6 +172,9 @@ export function ChatMessage({
 
       {isBot && !isStreaming && displayContent && (
         <div className="ml-11">
+          <p className="text-sm font-medium text-gray-600 mb-2">
+            Not sure what to ask? Try these:
+          </p>
           <NextBestActions 
             messageType={message.type || 'text'}
             onActionClick={onActionClick}
