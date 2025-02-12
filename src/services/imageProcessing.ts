@@ -156,9 +156,8 @@ const API_URL = process.env.NODE_ENV === 'production'
   ? '/api/chat'
   : 'http://localhost:3000/api/chat';
 
-
-  export async function processLocationImages(images: File[]): Promise<Location[]> {
-    console.log(`[Image Processing] Processing ${images.length} images`);
+export async function processLocationImages(images: File[]): Promise<Location[]> {
+  console.log(`[Image Processing] Processing ${images.length} images`);
   const locations: Location[] = [];
   
   for (const image of images) {
@@ -194,14 +193,14 @@ const API_URL = process.env.NODE_ENV === 'production'
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // Add credentials mode
+        credentials: 'include',
         body: JSON.stringify({
           messages: [{
             role: 'user',
             content: [
               {
                 type: 'text',
-                text: 'Identify this location. Respond with ONLY a JSON object in this format: {"name": "Location Name", "city": "City Name", "country": "Country", "coordinates": "DD.DDDD°N/S, DDD.DDDD°E/W", "description": "Brief description"}'
+                text: 'Identify this location. Respond with ONLY a JSON object in this format: {"name": "Location Name","city": "City Name","country": "Country","coordinates": "DD.DDDD°N/S, DDD.DDDD°E/W","rating": 4.5, "reviews": 1000,"description": "Brief description"}'
               },
               {
                 type: 'image',
@@ -215,32 +214,6 @@ const API_URL = process.env.NODE_ENV === 'production'
           }]
         })
       });
-
-      /* const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        mode: 'cors', // Explicitly set CORS mode
-        credentials: 'omit', // Don't send credentials
-        body: JSON.stringify({
-          messages: [{
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: 'Identify this location. Respond with ONLY a JSON object in this format: {"name": "Location Name", "city": "City Name", "country": "Country", "coordinates": "DD.DDDD°N/S, DDD.DDDD°E/W", "description": "Brief description"}'
-              },
-              {
-                type: 'image',
-                source: {
-                  type: 'base64',
-                  media_type: 'image/jpeg',
-                  data: base64Image.split(',')[1]
-                }
-              }
-            ]
-          }]
-        })
-      }); */
 
       if (!response.ok) throw new Error(`API error: ${response.status}`);
 
@@ -292,13 +265,16 @@ const API_URL = process.env.NODE_ENV === 'production'
 
       const [lat, lng] = coords;
       
-      // Create location object with city and description
+      // Create location object with all required properties
       locations.push({
         id: `loc-${Date.now()}-${Math.random().toString(36).slice(2)}`,
         name: locationData.name,
         city: cityName,
         country: locationData.country,
         position: { lat, lng },
+        rating: 4.8, // Default high rating for landmarks
+        reviews: Math.floor(Math.random() * 30000) + 20000, // Random number of reviews between 20k-50k
+        imageUrl: base64Image, // Use the processed image
         description: locationData.description || `Visit ${locationData.name}`
       });
 
@@ -311,6 +287,7 @@ const API_URL = process.env.NODE_ENV === 'production'
 
   return locations;
 }
+
 
 /* import { Location, Message } from '../types/chat';
 import { cityContext } from './cityContext';
