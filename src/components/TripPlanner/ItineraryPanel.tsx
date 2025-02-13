@@ -3,6 +3,7 @@ import { Calendar, Clock, MapPin, DollarSign, Users, ChevronDown, ChevronUp, Use
 import { Itinerary, DayPlan, TravelGroup } from '../../types/itinerary';
 import { DayTimeline } from './DayTimeline';
 import { BudgetBreakdown } from './BudgetBreakdown';
+import { format } from 'date-fns';
 
 interface ItineraryPanelProps {
   itinerary: Itinerary;
@@ -88,7 +89,9 @@ export function ItineraryPanel({
                     </span>
                   </div>
                   <div className="text-left">
-                    <h3 className="font-semibold text-gray-900">{day.date}</h3>
+                    <h3 className="font-semibold text-gray-900">
+                      {format(new Date(day.date), 'EEEE, MMMM d')}
+                    </h3>
                     <p className="text-sm text-gray-500">
                       {day.activities.length} activities
                     </p>

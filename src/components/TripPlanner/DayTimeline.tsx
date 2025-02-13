@@ -2,6 +2,7 @@ import React from 'react';
 import { MapPin, Clock, Bus } from 'lucide-react';
 import { DayPlan } from '../../types/itinerary';
 import { format } from 'date-fns';
+import { findPlace } from '../../services/places';
 
 interface DayTimelineProps {
   day: DayPlan;
@@ -17,15 +18,25 @@ export function DayTimeline({
   // Format the date string to show "Friday, February 14"
   const formattedDate = format(new Date(day.date), 'EEEE, MMMM d');
 
+  const handleMapsClick = async (e: React.MouseEvent, location: any) => {
+    e.stopPropagation();
+    try {
+      const mapsUrl = await findPlace(location);
+      window.open(mapsUrl, '_blank');
+    } catch (error) {
+      console.error('Error opening maps:', error);
+    }
+  };
+
   return (
     <div className="relative">
       {/* Timeline line */}
-      <div className="absolute left-[39px] top-0 bottom-0 w-px bg-gray-200" />
+     {/*  <div className="absolute left-[39px] top-0 bottom-0 w-px bg-gray-200" /> */}
 
       {/* Day header */}
-      <div className="mb-4">
+      {/* <div className="mb-4">
         <h3 className="text-lg font-semibold text-gray-900">{formattedDate}</h3>
-      </div>
+      </div> */}
 
       {/* Activities */}
       <div className="space-y-6">
@@ -80,15 +91,7 @@ export function DayTimeline({
                   <div className="flex items-center gap-1.5">
                     <MapPin size={14} />
                     <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        window.open(
-                          `https://www.google.com/maps/search/?api=1&query=${
-                            encodeURIComponent(activity.location.name)
-                          }@${activity.location.position.lat},${activity.location.position.lng}`,
-                          '_blank'
-                        );
-                      }}
+                      onClick={(e) => handleMapsClick(e, activity.location)}
                       className="text-blue-600 hover:text-blue-800"
                     >
                       View on map
@@ -103,6 +106,10 @@ export function DayTimeline({
     </div>
   );
 }
+
+
+
+
 /* import React from 'react';
 import { MapPin, Clock, Bus } from 'lucide-react';
 import { DayPlan } from '../../types/itinerary';
