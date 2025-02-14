@@ -143,13 +143,32 @@ export async function generateItinerary(
   };
 
   try {
-    const response = await fetch('/api/chat', {
+    /* const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         messages: [{ role: 'user', content: generatePrompt(tripDetails) }]
       })
+    }); */
+
+    console.log('[Itinerary Builder] Starting request...');
+
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'text/event-stream'
+      },
+      body: JSON.stringify({
+        messages: [{
+          role: 'user',
+          content: generatePrompt(tripDetails)
+        }]
+      })
     });
+
+    console.log('[Itinerary Builder] Response status:', response.status);
+
 
     if (!response.ok) {
       throw new Error(`Failed to generate itinerary: ${response.status}`);
@@ -161,6 +180,8 @@ export async function generateItinerary(
     const decoder = new TextDecoder();
     let buffer = '';
     let currentItinerary = { ...initialItinerary };
+
+    console.log('[Itinerary Builder] Starting to read stream...');
 
     while (true) {
       const { value, done } = await reader.read();
