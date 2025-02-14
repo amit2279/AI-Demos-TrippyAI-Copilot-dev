@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, MapPin, DollarSign, Users, ChevronDown, ChevronUp, UserCircle2, Users2, Baby, Heart, Briefcase } from 'lucide-react';
-import { Itinerary, DayPlan, TravelGroup } from '../../types/itinerary';
+import { Itinerary, TravelGroup, Activity } from '../../types/itinerary';
 import { DayTimeline } from './DayTimeline';
 import { BudgetBreakdown } from './BudgetBreakdown';
 import { format } from 'date-fns';
@@ -33,30 +33,43 @@ export function ItineraryPanel({
   const [showBudget, setShowBudget] = useState(false);
   const [validDays, setValidDays] = useState<Set<number>>(new Set());
 
-  // Effect to update map when days become valid
+  // Track which days have valid activities
   useEffect(() => {
-    if (itinerary.days?.length && onLocationsUpdate) {
-      const allLocations = itinerary.days.flatMap(day => 
-        day.activities?.map(activity => activity.location) || []
-      );
-      if (allLocations.length > 0) {
-        onLocationsUpdate(allLocations);
-      }
-    }
-  }, [itinerary.days, onLocationsUpdate]);
-
-  // Effect to track valid days
-  useEffect(() => {
-    if (itinerary.days) {
+    if (itinerary.days && itinerary.activities) {
       const newValidDays = new Set<number>();
-      itinerary.days.forEach((day, index) => {
-        if (day.activities?.length > 0) {
+      Object.values(itinerary.days).forEach((day, index) => {
+        const hasValidActivities = day.activityIds.every(id => itinerary.activities?.[id]);
+        if (hasValidActivities) {
           newValidDays.add(index);
         }
       });
       setValidDays(newValidDays);
     }
-  }, [itinerary.days]);
+  }, [itinerary.days, itinerary.activities]);
+
+  // Update map locations when activities are added
+  useEffect(() => {
+    if (itinerary.activities && onLocationsUpdate) {
+      const locations = Object.values(itinerary.activities)
+        .map(activity => activity.location)
+        .filter(Boolean);
+      
+      if (locations.length > 0) {
+        onLocationsUpdate(locations);
+      }
+    }
+  }, [itinerary.activities, onLocationsUpdate]);
+
+  // Get sorted activities for a day
+  const getDayActivities = (dayId: string): Activity[] => {
+    const day = itinerary.days?.[dayId];
+    if (!day || !itinerary.activities) return [];
+
+    return day.activityIds
+      .map(id => itinerary.activities?.[id])
+      .filter(Boolean)
+      .sort((a, b) => a.order - b.order);
+  };
 
   return (
     <div className="bg-white h-full flex flex-col">
@@ -102,58 +115,64 @@ export function ItineraryPanel({
       {/* Days */}
       <div className="flex-1 overflow-y-auto">
         <div className="divide-y-0">
-          {itinerary.days?.map((day, index) => (
-            <div key={index} className="bg-white">
-              <button
-                onClick={() => setExpandedDay(expandedDay === index ? -1 : index)}
-                className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    validDays.has(index) ? 'bg-blue-100' : 'bg-gray-100'
-                  }`}>
-                    <span className={`font-semibold ${
-                      validDays.has(index) ? 'text-blue-600' : 'text-gray-400'
-                    }`}>
-                      {index + 1}
-                    </span>
-                  </div>
-                  <div className="text-left">
-                    <h3 className="font-semibold text-gray-900">
-                      {day.date ? format(new Date(day.date), 'EEEE, MMMM d') : ''}
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      {validDays.has(index) 
-                        ? `${day.activities?.length || 0} activities`
-                        : 'Building your plan...'}
-                    </p>
-                  </div>
-                </div>
-                <div className="transform transition-transform duration-200">
-                  {expandedDay === index ? (
-                    <ChevronUp size={20} className="text-gray-400" />
-                  ) : (
-                    <ChevronDown size={20} className="text-gray-400" />
-                  )}
-                </div>
-              </button>
+          {itinerary.dayOrder?.map((dayId, index) => {
+            const day = itinerary.days?.[dayId];
+            if (!day) return null;
 
-              <div 
-                className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                  expandedDay === index ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
-                }`}
-              >
-                <div className="px-6 pb-6">
-                  <DayTimeline 
-                    day={day as DayPlan}
-                    onLocationSelect={onLocationSelect}
-                    selectedLocationId={selectedLocationId}
-                    isLoading={!validDays.has(index)}
-                  />
+            return (
+              <div key={dayId} className="bg-white">
+                <button
+                  onClick={() => setExpandedDay(expandedDay === index ? -1 : index)}
+                  className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      validDays.has(index) ? 'bg-blue-100' : 'bg-gray-100'
+                    }`}>
+                      <span className={`font-semibold ${
+                        validDays.has(index) ? 'text-blue-600' : 'text-gray-400'
+                      }`}>
+                        {day.dayNumber}
+                      </span>
+                    </div>
+                    <div className="text-left">
+                      <h3 className="font-semibold text-gray-900">
+                        {format(new Date(day.date), 'EEEE, MMMM d')}
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        {validDays.has(index) 
+                          ? `${day.activityIds.length} activities`
+                          : 'Building your plan...'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="transform transition-transform duration-200">
+                    {expandedDay === index ? (
+                      <ChevronUp size={20} className="text-gray-400" />
+                    ) : (
+                      <ChevronDown size={20} className="text-gray-400" />
+                    )}
+                  </div>
+                </button>
+
+                <div 
+                  className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                    expandedDay === index ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
+                  }`}
+                >
+                  <div className="px-6 pb-6">
+                    <DayTimeline 
+                      date={day.date}
+                      activities={getDayActivities(dayId)}
+                      onLocationSelect={onLocationSelect}
+                      selectedLocationId={selectedLocationId}
+                      isLoading={!validDays.has(index)}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Budget Section */}

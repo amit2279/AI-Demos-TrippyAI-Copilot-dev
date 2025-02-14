@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import { TripDetails, TravelGroup, ActivityType } from '../../types/itinerary';
+import { TripDetails, TravelGroup } from '../../types/itinerary';
 import { LocationSearch } from './LocationSearch';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
@@ -16,7 +16,16 @@ export function TripPlannerModal({ onClose, onSubmit, isLoading = false }: TripP
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [travelGroup, setTravelGroup] = useState<TravelGroup>('Solo traveler');
-  const [selectedActivities, setSelectedActivities] = useState<ActivityType[]>([]);
+
+/*   const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit({
+      destination,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+      travelGroup
+    });
+  }; */
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,19 +38,9 @@ export function TripPlannerModal({ onClose, onSubmit, isLoading = false }: TripP
         activityTypes: selectedActivities
       }
     });
+    onClose(); // Close modal immediately to show streaming panel
   };
-
   
-
-  const activityTypes: ActivityType[] = [
-    'Cultural',
-    'Foodie', 
-    'Adventure',
-    'Nightlife',
-    'Nature',
-    'Shopping',
-    'Relaxation'
-  ];
 
   const travelGroups: TravelGroup[] = [
     'Solo traveler',
@@ -109,41 +108,6 @@ export function TripPlannerModal({ onClose, onSubmit, isLoading = false }: TripP
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholderText="Select end date"
               />
-            </div>
-          </div>
-
-          {/* Activity Types */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              What interests you?
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {activityTypes.map(activity => (
-                <label
-                  key={activity}
-                  className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
-                    selectedActivities.includes(activity)
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:bg-gray-50'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedActivities.includes(activity)}
-                    onChange={(e) => {
-                      setSelectedActivities(prev =>
-                        e.target.checked
-                          ? [...prev, activity]
-                          : prev.filter(a => a !== activity)
-                      );
-                    }}
-                    className="sr-only"
-                  />
-                  <span className="text-sm font-medium text-gray-900">
-                    {activity}
-                  </span>
-                </label>
-              ))}
             </div>
           </div>
 

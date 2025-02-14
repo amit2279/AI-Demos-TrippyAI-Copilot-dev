@@ -168,10 +168,22 @@ export default function App() {
     }
   }, [messages]);
 
-  const handleItineraryUpdate = useCallback((itinerary: Itinerary) => {
-    console.log('[App] Updating itinerary:', itinerary);
-    setCurrentItinerary(itinerary);
+  const handleItineraryUpdate = useCallback((itinerary: Partial<Itinerary>) => {
+    //console.log('[App] Updating itinerary:', itinerary);
+    setCurrentItinerary(itinerary as Itinerary);
     setShowItinerary(true);
+
+    // Update locations when we have valid activities
+    if (itinerary.days?.length) {
+      const allLocations = itinerary.days.flatMap(day => 
+        day.activities?.map(activity => activity.location) || []
+      ).filter(Boolean);
+
+      if (allLocations.length > 0) {
+        setLocations(allLocations);
+        setSelectedLocation(allLocations[0]);
+      }
+    }
   }, []);
 
   return (
@@ -216,14 +228,13 @@ export default function App() {
           <ItineraryPanel
             itinerary={currentItinerary}
             onLocationSelect={(locationId) => {
-              const location = currentItinerary.days
-                .flatMap(day => day.activities)
-                .find(activity => activity.location.id === locationId)?.location;
+              const location = locations.find(loc => loc.id === locationId);
               if (location) {
                 handleLocationSelect(location);
               }
             }}
             selectedLocationId={selectedLocation?.id}
+            onLocationsUpdate={handleLocationsUpdate}
           />
         </div>
       )}

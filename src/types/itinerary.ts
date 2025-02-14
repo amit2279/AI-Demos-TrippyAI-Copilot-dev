@@ -20,6 +20,7 @@ export type ActivityType = 'Cultural' | 'Foodie' | 'Adventure' | 'Nightlife' | '
 
 export interface Activity {
   id: string;
+  dayId: string;
   name: string;
   location: Location;
   icon: string;
@@ -29,17 +30,33 @@ export interface Activity {
   travelTime?: string;
   cost?: string;
   description?: string;
+  order: number;
+}
+
+export interface Day {
+  id: string;
+  date: string;
+  dayNumber: number;
+  activityIds: string[];
 }
 
 export interface DayPlan {
   date: string;
+  dayNumber: number;
   activities: Activity[];
 }
 
 export interface Itinerary {
-  tripDetails: TripDetails;
-  days: DayPlan[];
-  budgetSummary: BudgetSummary;
+  tripDetails: {
+    destination: string;
+    startDate?: string;
+    endDate?: string;
+    travelGroup: string;
+  };
+  activities: { [key: string]: Activity };
+  days: { [key: string]: Day };
+  dayOrder: string[];
+  budgetSummary?: BudgetSummary;
 }
 
 export interface BudgetSummary {
@@ -57,5 +74,4 @@ export interface ItineraryState {
   isLoading: boolean;
   error: string | null;
   data: Itinerary | null;
-  useTestData: boolean;
 }

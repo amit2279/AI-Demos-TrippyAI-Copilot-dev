@@ -3,20 +3,44 @@ import { MapPin, Clock, Bus } from 'lucide-react';
 import { DayPlan } from '../../types/itinerary';
 import { format } from 'date-fns';
 import { findPlace } from '../../services/places';
+import { Shimmer, ShimmerText } from '../ui/Shimmer';
 
 interface DayTimelineProps {
   day: DayPlan;
   onLocationSelect: (locationId: string) => void;
   selectedLocationId?: string;
+  isLoading?: boolean;
+}
+
+function LoadingActivity() {
+  return (
+    <div className="relative flex gap-4">
+      <Shimmer className="w-5 h-5 rounded-full bg-gray-200 mt-1" />
+      <div className="flex-1">
+        <div className="p-4 border border-gray-200 rounded-lg space-y-4">
+          <div className="flex items-start justify-between">
+            <div className="space-y-2">
+              <ShimmerText className="w-48 h-5" />
+              <ShimmerText className="w-32 h-4" />
+            </div>
+          </div>
+          <div className="flex gap-4">
+            <ShimmerText className="w-24 h-4" />
+            <ShimmerText className="w-24 h-4" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function DayTimeline({ 
   day, 
   onLocationSelect,
-  selectedLocationId 
+  selectedLocationId,
+  isLoading = false
 }: DayTimelineProps) {
-  // Format the date string to show "Friday, February 14"
-  const formattedDate = format(new Date(day.date), 'EEEE, MMMM d');
+  const formattedDate = day.date ? format(new Date(day.date), 'EEEE, MMMM d') : '';
 
   const handleMapsClick = async (e: React.MouseEvent, location: any) => {
     e.stopPropagation();
@@ -28,15 +52,20 @@ export function DayTimeline({
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        {[...Array(3)].map((_, i) => (
+          <LoadingActivity key={i} />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="relative">
       {/* Timeline line */}
-     {/*  <div className="absolute left-[39px] top-0 bottom-0 w-px bg-gray-200" /> */}
-
-      {/* Day header */}
-      {/* <div className="mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">{formattedDate}</h3>
-      </div> */}
+      {/* <div className="absolute left-[39px] top-0 bottom-0 w-px bg-gray-200" /> */}
 
       {/* Activities */}
       <div className="space-y-6">
@@ -106,7 +135,6 @@ export function DayTimeline({
     </div>
   );
 }
-
 
 
 

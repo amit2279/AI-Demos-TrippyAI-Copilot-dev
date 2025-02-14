@@ -33,17 +33,17 @@ const CHAT_SYSTEM_PROMPT = `You are a knowledgeable travel assistant. For ALL qu
    - NO other text or JSON
 
 3. For Trip Planning:
-   When generating itineraries, respond with this EXACT JSON format:
+   When generating itineraries, format your response EXACTLY like this, with no additional text:
    {
      "tripDetails": {
-       "destination": string,
-       "startDate": string,
-       "endDate": string
+       "destination": Destination Name,
+       "startDate": Start Date,
+       "endDate": End Date,
      },
      "days": [
        {
-         "date": string,
-         "dayNumber": number,
+         "date": Date,
+         "dayNumber": Day Number,
          "activities": [
            {
              "id": string,
@@ -183,7 +183,7 @@ export default async function handler(
       console.log('FILE CHAT - TS: ---------------------------- IN VISION REQUEST');
       const response = await anthropic.messages.create({
         model: 'claude-3-opus-20240229',
-        max_tokens: 4096,
+        max_tokens: 8192,
         messages,
         system: VISION_SYSTEM_PROMPT,
         temperature: 0.2
@@ -195,7 +195,7 @@ export default async function handler(
       console.log('FILE CHAT - TS: ---------------------------- IN MESSAGE REQUEST');
       const stream = await anthropic.messages.create({
         model: 'claude-3-opus-20240229',
-        max_tokens: 4096,
+        max_tokens: 8192,
         messages,
         system: CHAT_SYSTEM_PROMPT,
         stream: true

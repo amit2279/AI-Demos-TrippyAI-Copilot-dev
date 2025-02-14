@@ -20,8 +20,7 @@ export async function generateItinerary(
     tripDetails: {
       destination: tripDetails.destination,
       startDate: tripDetails.startDate?.toISOString(),
-      endDate: tripDetails.endDate?.toISOString(),
-      travelGroup: tripDetails.travelGroup
+      endDate: tripDetails.endDate?.toISOString()
     },
     days: [],
     budgetSummary: {
@@ -35,23 +34,6 @@ export async function generateItinerary(
       }
     }
   };
-
-  // Initialize days array based on date range if available
-  if (tripDetails.startDate && tripDetails.endDate) {
-    const dayCount = Math.ceil(
-      (tripDetails.endDate.getTime() - tripDetails.startDate.getTime()) / (1000 * 60 * 60 * 24)
-    ) + 1;
-    
-    initialItinerary.days = Array.from({ length: dayCount }, (_, i) => {
-      const date = new Date(tripDetails.startDate!);
-      date.setDate(date.getDate() + i);
-      return {
-        date: date.toISOString(),
-        dayNumber: i + 1,
-        activities: []
-      };
-    });
-  }
 
   onUpdate?.(initialItinerary);
 
@@ -74,38 +56,17 @@ export async function generateItinerary(
           .replace(/,\s*([\]}])/g, '$1')
           .trim();
 
-        // Try to parse complete days or activities
-        const dayMatch = joined.match(/{\s*"date":[^}]+?"activities":\s*\[(.*?)\]\s*}/g);
-        if (dayMatch) {
-          const days = dayMatch.map(dayStr => {
-            try {
-              return JSON.parse(dayStr);
-            } catch (e) {
-              return null;
-            }
-          }).filter(Boolean);
-
-          if (days.length > 0) {
-            return { days };
-          }
+        // Attempt to parse and validate
+        const parsed = JSON.parse(joined);
+        if (validateItineraryStructure(parsed)) {
+          this.complete = true;
+          return parsed;
         }
-
-        // Try to parse complete itinerary
-        try {
-          const parsed = JSON.parse(joined);
-          if (validateItineraryStructure(parsed)) {
-            this.complete = true;
-            return parsed;
-          }
-        } catch (e) {
-          // Continue if complete parse fails
-        }
-
-        return null;
       } catch (e) {
         console.log('[Itinerary Builder] Validation failed:', e);
-        return null;
+        // Don't reset state on validation failure
       }
+      return null;
     },
 
     append(newText: string) {
@@ -185,42 +146,27 @@ export async function generateItinerary(
 
           // Accumulate and validate JSON
           jsonAccumulator.append(parsed.text);
-          const validData = jsonAccumulator.validate();
+          const validItinerary = jsonAccumulator.validate();
 
-          if (validData) {
-            // Update days if we have new valid days
-            if (validData.days) {
-              currentItinerary.days = currentItinerary.days?.map((existingDay, index) => {
-                const newDay = validData.days[index];
-                if (!newDay) return existingDay;
+          if (validItinerary) {
+            currentItinerary = {
+              tripDetails: validItinerary.tripDetails,
+              days: validItinerary.days.map((day: any) => ({
+                ...day,
+                activities: day.activities.map((activity: any) => ({
+                  ...activity,
+                  id: activity.id || `activity-${Date.now()}-${Math.random()}`,
+                  location: {
+                    ...activity.location,
+                    id: activity.location.id || `location-${Date.now()}-${Math.random()}`
+                  }
+                }))
+              })),
+              budgetSummary: validItinerary.budgetSummary
+            };
 
-                return {
-                  ...existingDay,
-                  ...newDay,
-                  activities: newDay.activities.map((activity: any) => ({
-                    ...activity,
-                    id: activity.id || `activity-${Date.now()}-${Math.random()}`,
-                    location: {
-                      ...activity.location,
-                      id: activity.location.id || `location-${Date.now()}-${Math.random()}`
-                    }
-                  }))
-                };
-              }) || [];
-
-              onUpdate?.(currentItinerary);
-            }
-
-            // If we have a complete itinerary, update everything
-            if (validData.tripDetails && validData.budgetSummary) {
-              currentItinerary = {
-                ...currentItinerary,
-                tripDetails: validData.tripDetails,
-                budgetSummary: validData.budgetSummary
-              };
-              onUpdate?.(currentItinerary);
-              return currentItinerary as Itinerary;
-            }
+            onUpdate?.(currentItinerary);
+            return currentItinerary as Itinerary;
           }
         } catch (e) {
           console.warn('[Itinerary Builder] Error processing chunk:', e);
@@ -311,7 +257,7 @@ function generatePrompt(tripDetails: TripDetails): string {
   - All coordinates must be valid (lat: -90 to 90, lng: -180 to 180)`
 }
 
-// Validation functions
+// Validation functions remain the same but with improved error handling
 function validateItineraryStructure(obj: any): boolean {
   try {
     if (!obj || typeof obj !== 'object') return false;

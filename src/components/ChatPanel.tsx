@@ -6,7 +6,7 @@ import { ProcessingIndicator } from './ProcessingIndicator';
 import { QuickActionsPanel } from './QuickActionsPanel';
 import { ImageLocationSearch } from './ImageLocationSearch';
 import { TripPlannerModal } from './TripPlanner/Modal';
-import { TripDetails } from '../types/itinerary';
+import { TripDetails, Itinerary } from '../types/itinerary';
 import { generateItinerary } from '../services/itinerary/builder';
 
 interface ChatPanelProps {
@@ -21,7 +21,7 @@ interface ChatPanelProps {
   weatherLocation: string | null;
   onImageSearch: (images: File[]) => void;
   isProcessingImages: boolean;
-  onItineraryUpdate?: (itinerary: any) => void;
+  onItineraryUpdate?: (itinerary: Partial<Itinerary>) => void;
 }
 
 export function ChatPanel({
@@ -84,21 +84,24 @@ export function ChatPanel({
       setTripPlannerError(null);
       setShowTripPlanner(false);
 
-      // Generate the itinerary without adding messages to chat
-      const itinerary = await generateItinerary(details);
-      console.log('[ChatPanel] Generated itinerary:', itinerary);
+      // Start with a loading state
+      onItineraryUpdate?.({
+        tripDetails: {
+          destination: details.destination,
+          startDate: details.startDate?.toISOString(),
+          endDate: details.endDate?.toISOString(),
+          travelGroup: details.travelGroup
+        }
+      });
 
-      // Update locations with the first day's activities
-      if (itinerary.days[0]?.activities.length > 0) {
-        const locations = itinerary.days[0].activities.map(activity => activity.location);
-        onLocationsUpdate(locations);
-        onLocationSelect(locations[0]);
-      }
+      // Generate the itinerary with real-time updates
+      const itinerary = await generateItinerary(details, (partialItinerary) => {
+        //console.log('[ChatPanel] Received partial itinerary update:', partialItinerary);
+        onItineraryUpdate?.(partialItinerary);
+      });
 
-      // Update the itinerary in the parent component
-      if (onItineraryUpdate) {
-        onItineraryUpdate(itinerary);
-      }
+      // Final update with complete itinerary
+      onItineraryUpdate?.(itinerary);
 
     } catch (error) {
       console.error('Error generating itinerary:', error);
