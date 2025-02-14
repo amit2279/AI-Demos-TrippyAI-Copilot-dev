@@ -109,9 +109,8 @@ export function ItineraryPanel({
                 className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
               >
                 <div className="flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    validDays.has(index) ? 'bg-blue-100' : 'bg-gray-100'
-                  }`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center 
+                  ${ validDays.has(index) ? 'bg-blue-100' : 'bg-gray-100'}`}>
                     <span className={`font-semibold ${
                       validDays.has(index) ? 'text-blue-600' : 'text-gray-400'
                     }`}>
