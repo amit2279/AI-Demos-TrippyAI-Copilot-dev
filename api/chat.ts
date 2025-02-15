@@ -183,7 +183,7 @@ export default async function handler(
       console.log('FILE CHAT - TS: ---------------------------- IN VISION REQUEST');
       const response = await anthropic.messages.create({
         model: 'claude-3-opus-20240229',
-        max_tokens: 8192,
+        max_tokens: 4096,
         messages,
         system: VISION_SYSTEM_PROMPT,
         temperature: 0.2
@@ -195,7 +195,7 @@ export default async function handler(
       console.log('FILE CHAT - TS: ---------------------------- IN MESSAGE REQUEST');
       const stream = await anthropic.messages.create({
         model: 'claude-3-opus-20240229',
-        max_tokens: 8192,
+        max_tokens: 4096,
         messages,
         system: CHAT_SYSTEM_PROMPT,
         stream: true
