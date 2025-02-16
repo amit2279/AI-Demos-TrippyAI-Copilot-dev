@@ -273,7 +273,7 @@ export default async function handler(
       console.log('FILE CHAT - TS: ---------------------------- IN MESSAGE REQUEST');
       const stream = await anthropic.messages.create({
         model: 'claude-3-opus-20240229',
-        max_tokens: 4096,
+        max_tokens: 8192,
         messages,
         system: CHAT_SYSTEM_PROMPT,
         stream: true

@@ -48,6 +48,7 @@ export const MapMarkers: React.FC<{
     </>
   );
 };*/
+
 import React from 'react';
 import { Marker, Popup, useMap } from 'react-leaflet';
 import { Location } from '../../types/chat';
@@ -55,15 +56,20 @@ import { icon } from 'leaflet';
 import { Star, MapPin, ExternalLink } from 'lucide-react';
 import { findPlace } from '../../services/places';
 
-const defaultIcon = icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-  className: 'marker-bounce'
+// Create a function to generate numbered marker icons
+const createNumberedIcon = (number: number) => icon({
+  iconUrl: `data:image/svg+xml;base64,${btoa(`
+    <svg width="32" height="42" viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M16 42L0 26V0h32v26L16 42z" fill="#3B82F6"/>
+      <circle cx="16" cy="16" r="12" fill="white"/>
+      <text x="16" y="20" font-family="Arial" font-size="14" font-weight="bold" fill="#3B82F6" text-anchor="middle">
+        ${number}
+      </text>
+    </svg>
+  `)}`,
+  iconSize: [32, 42],
+  iconAnchor: [16, 42],
+  popupAnchor: [0, -42]
 });
 
 interface MapMarkersProps {
@@ -214,11 +220,11 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({
 
   return (
     <>
-      {locations.map((location) => (
+      {locations.map((location, index) => (
         <Marker
           key={location.id}
           position={[location.position.lat, location.position.lng]}
-          icon={defaultIcon}
+          icon={createNumberedIcon(index + 1)}
           eventHandlers={{
             click: () => onLocationSelect(location)
           }}

@@ -34,7 +34,6 @@ export function ItineraryPanel({
   const [expandedDay, setExpandedDay] = useState<number>(0);
   const [showBudget, setShowBudget] = useState(false);
   const [headerImage, setHeaderImage] = useState<string>('');
-  const [isImageLoading, setIsImageLoading] = useState(true);
 
   // Effect to update map when new activities are added
   useEffect(() => {
@@ -48,30 +47,17 @@ export function ItineraryPanel({
     }
   }, [itinerary.days, onLocationsUpdate]);
 
-  /* // Load header image
+  // Load header image
   useEffect(() => {
     if (itinerary.tripDetails?.destination) {
-      setIsImageLoading(true);
+      const imageUrl = `https://source.unsplash.com/1600x900/?${encodeURIComponent(itinerary.tripDetails.destination + ' landmark')}`;
       
-      // Create the image URL with proper encoding
-      const searchQuery = encodeURIComponent(`${itinerary.tripDetails.destination} landmark scenic`);
-      const imageUrl = `https://source.unsplash.com/1600x900/?${searchQuery}`;
-      //console.log('Loading header image:', imageUrl);
-      // Preload the image
+      // Pre-load image
       const img = new Image();
-      img.onload = () => {
-        setHeaderImage(imageUrl);
-        setIsImageLoading(false);
-      };
-      img.onerror = () => {
-        // Fallback to a more generic search if the first one fails
-        const fallbackQuery = encodeURIComponent(`${itinerary.tripDetails.destination} city`);
-        const fallbackUrl = `https://source.unsplash.com/1600x900/?${fallbackQuery}`;
-        img.src = fallbackUrl;
-      };
+      img.onload = () => setHeaderImage(imageUrl);
       img.src = imageUrl;
     }
-  }, [itinerary.tripDetails?.destination]); */
+  }, [itinerary.tripDetails?.destination]);
 
   const getDayStatus = (day: DayPlan) => {
     if (!day.activities?.length) {
@@ -95,12 +81,10 @@ export function ItineraryPanel({
       {/* Header with background image */}
       <div className="relative">
         <div 
-          className={`h-48 bg-cover bg-center transition-all duration-500 ease-out ${
-            isImageLoading ? 'opacity-80' : 'opacity-80'
-          }`}
+          className="h-48 bg-cover bg-center transition-opacity duration-500"
           style={{
             backgroundImage: headerImage ? `url(${headerImage})` : undefined,
-            backgroundColor: '#f3f4f6' // Gray background while loading
+            opacity: headerImage ? 1 : 0
           }}
         >
           <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-black/70" />

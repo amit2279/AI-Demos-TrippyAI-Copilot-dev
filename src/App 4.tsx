@@ -37,7 +37,8 @@ export default function App() {
   const [currentItinerary, setCurrentItinerary] = useState<Itinerary | null>(null);
   const [showItinerary, setShowItinerary] = useState(false);
   const [streamingActivity, setStreamingActivity] = useState(false);
-  const [isPanelAnimating, setIsPanelAnimating] = useState(false);
+
+
 
   // Set initial city context only once
   useEffect(() => {
@@ -78,31 +79,6 @@ export default function App() {
       setError('Failed to process images');
     } finally {
       setIsProcessingImages(false);
-    }
-  }, []);
-
-  const handleItineraryUpdate = useCallback((
-    itinerary: Partial<Itinerary>, 
-    isStreaming?: boolean
-  ) => {
-    setCurrentItinerary(itinerary as Itinerary);
-    setIsPanelAnimating(true);
-    
-    // Delay showing content until animation starts
-    setTimeout(() => {
-      setShowItinerary(true);
-      setStreamingActivity(isStreaming ?? false);
-    }, 50);
-  
-    if (itinerary.days?.length) {
-      const allLocations = itinerary.days.flatMap(day => 
-        day.activities?.map(activity => activity.location) || []
-      );
-  
-      if (allLocations.length > 0) {
-        setLocations(allLocations);
-        setSelectedLocation(allLocations[0]);
-      }
     }
   }, []);
 
@@ -195,15 +171,31 @@ export default function App() {
     }
   }, [messages]);
 
-  // Handle animation end
-  const handleTransitionEnd = useCallback(() => {
-    setIsPanelAnimating(false);
+  const handleItineraryUpdate = useCallback((
+    itinerary: Partial<Itinerary>, 
+    isStreaming?: boolean
+  ) => {
+    setCurrentItinerary(itinerary as Itinerary);
+    setShowItinerary(true);
+    setStreamingActivity(isStreaming ?? false);
+  
+    // Update locations when we have valid activities
+    if (itinerary.days?.length) {
+      const allLocations = itinerary.days.flatMap(day => 
+        day.activities?.map(activity => activity.location) || []
+      ).filter(Boolean);
+  
+      if (allLocations.length > 0) {
+        setLocations(allLocations);
+        setSelectedLocation(allLocations[0]);
+      }
+    }
   }, []);
 
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Left Panel - Chat */}
-      <div className="w-[400px] flex-shrink-0 bg-white z-50 relative shadow-xl">
+      <div className="w-[400px] flex-shrink-0 bg-white z-50 relative shadow-lg">
         <ChatPanel
           messages={messages}
           onSendMessage={handleSendMessage}
@@ -221,7 +213,7 @@ export default function App() {
       </div>
       
       {/* Center Panel - Map */}
-      <div className="flex-1 relative">
+      <div className={`flex-1 relative ${showItinerary ? 'mr-[400px]' : ''}`}>
         <div className="absolute top-4 right-4 z-50">
           <MapToggle view={mapView} onToggle={setMapView} />
         </div>
@@ -237,17 +229,8 @@ export default function App() {
       </div>
 
       {/* Right Panel - Itinerary */}
-      {(showItinerary || isPanelAnimating) && currentItinerary && (
-        <div 
-          className="w-[520px] flex-shrink-0 bg-white shadow-lg overflow-y-auto transform transition-all duration-500 ease-out absolute top-0 bottom-0 z-40"
-          style={{
-            left: '400px',
-            transform: `translateX(${showItinerary ? '0' : '-100%'})`,
-            opacity: showItinerary ? 1 : 0,
-            visibility: isPanelAnimating || showItinerary ? 'visible' : 'hidden'
-          }}
-          onTransitionEnd={handleTransitionEnd}
-        >
+      {showItinerary && currentItinerary && (
+        <div className="w-[400px] flex-shrink-0 bg-white shadow-lg fixed right-0 top-0 bottom-0 z-40 overflow-y-auto">
           <ItineraryPanel
             itinerary={currentItinerary}
             onLocationSelect={(locationId) => {

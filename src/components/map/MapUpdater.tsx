@@ -60,7 +60,7 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
         console.log('[MapUpdater] flyTo ---------- 1 ');
         map.flyTo(
           [selectedLocation.position.lat, selectedLocation.position.lng],
-          15,
+          18,
           {
             duration: 1.8,
             easeLinearity: 0.25
@@ -148,7 +148,7 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
             [location.position.lat, location.position.lng],
             15,
             {
-              duration: 2.5,
+              duration: 2,
               easeLinearity: 0.25
             }
           );
@@ -179,7 +179,7 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
           map.flyToBounds(paddedBounds, {
             padding: [50, 50],
             maxZoom: 16,
-            duration: 2.5,
+            duration: 2,
             easeLinearity: 0.25
           });
 
