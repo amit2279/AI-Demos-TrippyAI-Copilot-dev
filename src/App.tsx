@@ -36,6 +36,9 @@ export default function App() {
   const [isProcessingImages, setIsProcessingImages] = useState(false);
   const [currentItinerary, setCurrentItinerary] = useState<Itinerary | null>(null);
   const [showItinerary, setShowItinerary] = useState(false);
+  const [streamingActivity, setStreamingActivity] = useState(false);
+
+
 
   // Set initial city context only once
   useEffect(() => {
@@ -168,17 +171,20 @@ export default function App() {
     }
   }, [messages]);
 
-  const handleItineraryUpdate = useCallback((itinerary: Partial<Itinerary>) => {
-    //console.log('[App] Updating itinerary:', itinerary);
+  const handleItineraryUpdate = useCallback((
+    itinerary: Partial<Itinerary>, 
+    isStreaming?: boolean
+  ) => {
     setCurrentItinerary(itinerary as Itinerary);
     setShowItinerary(true);
-
+    setStreamingActivity(isStreaming ?? false);
+  
     // Update locations when we have valid activities
     if (itinerary.days?.length) {
       const allLocations = itinerary.days.flatMap(day => 
         day.activities?.map(activity => activity.location) || []
       ).filter(Boolean);
-
+  
       if (allLocations.length > 0) {
         setLocations(allLocations);
         setSelectedLocation(allLocations[0]);
@@ -235,6 +241,7 @@ export default function App() {
             }}
             selectedLocationId={selectedLocation?.id}
             onLocationsUpdate={handleLocationsUpdate}
+            streamingActivity={streamingActivity}
           />
         </div>
       )}

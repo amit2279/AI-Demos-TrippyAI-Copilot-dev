@@ -248,6 +248,8 @@ export default function App() {
               }
             }}
             selectedLocationId={selectedLocation?.id}
+            onLocationsUpdate={handleLocationsUpdate}
+            streamingActivity={streamingActivity} // Add this prop from the builder callback
           />
         </div>
       )}

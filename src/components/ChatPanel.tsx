@@ -79,7 +79,7 @@ export function ChatPanel({
     }
   };
 
-  const handleTripPlannerSubmit = async (details: TripDetails) => {
+  /* const handleTripPlannerSubmit = async (details: TripDetails) => {
     try {
       setTripPlannerError(null);
       setShowTripPlanner(false);
@@ -108,8 +108,39 @@ export function ChatPanel({
       setTripPlannerError('Failed to generate itinerary. Please try again.');
       setShowTripPlanner(true);
     }
-  };
+  }; */
 
+  const handleTripPlannerSubmit = async (details: TripDetails) => {
+    try {
+      setTripPlannerError(null);
+      setShowTripPlanner(false);
+  
+      // Start with a loading state
+      onItineraryUpdate?.({
+        tripDetails: {
+          destination: details.destination,
+          startDate: details.startDate?.toISOString(),
+          endDate: details.endDate?.toISOString(),
+          travelGroup: details.travelGroup
+        }
+      }, false); // Initial state, not streaming yet
+  
+      // Generate the itinerary with real-time updates
+      const itinerary = await generateItinerary(details, (partialItinerary, streamingActivity) => {
+        onItineraryUpdate?.(partialItinerary, streamingActivity);
+      });
+  
+      // Final update with complete itinerary
+      onItineraryUpdate?.(itinerary, false); // Final state, not streaming anymore
+  
+    } catch (error) {
+      console.error('Error generating itinerary:', error);
+      setTripPlannerError('Failed to generate itinerary. Please try again.');
+      setShowTripPlanner(true);
+    }
+  };
+  
+  
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Header */}

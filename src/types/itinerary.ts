@@ -1,3 +1,4 @@
+// itinerary.ts
 import { Location } from './chat';
 
 export interface TripDetails {
@@ -20,30 +21,22 @@ export type ActivityType = 'Cultural' | 'Foodie' | 'Adventure' | 'Nightlife' | '
 
 export interface Activity {
   id: string;
-  dayId: string;
+  dayNumber: number;  // Changed from dayId to dayNumber to match streaming format
   name: string;
   location: Location;
-  icon: string;
   startTime: string;
   duration: string;
   transport?: string;
   travelTime?: string;
   cost?: string;
   description?: string;
-  order: number;
-}
-
-export interface Day {
-  id: string;
-  date: string;
-  dayNumber: number;
-  activityIds: string[];
 }
 
 export interface DayPlan {
   date: string;
   dayNumber: number;
   activities: Activity[];
+  isLoading?: boolean;  // Added to support loading states
 }
 
 export interface Itinerary {
@@ -53,9 +46,7 @@ export interface Itinerary {
     endDate?: string;
     travelGroup: string;
   };
-  activities: { [key: string]: Activity };
-  days: { [key: string]: Day };
-  dayOrder: string[];
+  days: DayPlan[];  // Simplified to array of DayPlan
   budgetSummary?: BudgetSummary;
 }
 

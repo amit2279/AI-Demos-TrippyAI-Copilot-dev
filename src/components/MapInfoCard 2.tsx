@@ -12,7 +12,7 @@ export const MapInfoCard: React.FC<MapInfoCardProps> = ({ location, onClose }) =
   const [isVisible, setIsVisible] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
 
-  /* useEffect(() => {
+  useEffect(() => {
     if (location) {
       setIsClosing(false);
       const timer = setTimeout(() => {
@@ -22,7 +22,7 @@ export const MapInfoCard: React.FC<MapInfoCardProps> = ({ location, onClose }) =
     } else {
       setIsVisible(false);
     }
-  }, [location]); */
+  }, [location]);
 
   const handleMapsClick = async (e: React.MouseEvent) => {
     e.preventDefault();
