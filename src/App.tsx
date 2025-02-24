@@ -20,12 +20,12 @@ import { AuthOverlay } from './components/Auth/AuthOverlay';
 
 // Add Sentry and PostHog
 import * as Sentry from "@sentry/react";
-import posthog from 'posthog-js';
+//import posthog from 'posthog-js';
 // src/pages/_app.tsx
 import type { AppProps } from 'next/app'
 
 
-// Initialize analytics
+/* // Initialize analytics
 if (import.meta.env.VITE_POSTHOG_KEY) {
   posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
     api_host: import.meta.env.VITE_POSTHOG_HOST || 'https://app.posthog.com',
@@ -33,7 +33,7 @@ if (import.meta.env.VITE_POSTHOG_KEY) {
       if (import.meta.env.DEV) posthog.opt_out_capturing();
     }
   });
-}
+} */
 
 // Initialize Sentry
 if (import.meta.env.VITE_SENTRY_DSN) {
@@ -117,7 +117,7 @@ export default function App() {
   const handleAuthSuccess = useCallback((sessionToken: string) => {
     localStorage.setItem('sessionToken', sessionToken);
     setIsAuthenticated(true);
-    posthog.capture('user_authenticated');
+    //posthog.capture('user_authenticated');
   }, []);
 
 
