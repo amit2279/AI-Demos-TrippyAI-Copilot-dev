@@ -5,28 +5,8 @@ import { MapUpdater } from './map/MapUpdater';
 import { MapInfoCard } from './MapInfoCard';
 import 'leaflet/dist/leaflet.css';
 import { icon } from 'leaflet';
-import { createPin } from '../utils/markerUtils';
 
-
-// In MapPanel.tsx
-
-// ... in your marker rendering ...
-/* {validLocations.map((location, index) => (
-  <Marker
-    key={location.id}
-    position={[location.position.lat, location.position.lng]}
-    icon={createPinIcon(index + 1)}  // Auto cycle colors
-    // OR specify a color
-    // icon={createPinIcon(index + 1, 'blue')}
-    eventHandlers={{
-      click: () => handleMarkerClick(location)
-    }}
-  />
-))} */
-
-
-
-/* // Create a function to generate numbered marker icons
+// Create a function to generate numbered marker icons
 const createNumberedIcon = (number: number) => icon({
   iconUrl: `data:image/svg+xml;base64,${btoa(`
     <svg width="32" height="42" viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -40,9 +20,9 @@ const createNumberedIcon = (number: number) => icon({
   iconSize: [32, 42],
   iconAnchor: [16, 42],
   popupAnchor: [0, -42]
-}); */
+});
 
-/* // Create a default marker icon without number
+// Create a default marker icon without number
 const defaultIcon = icon({
   iconUrl: `data:image/svg+xml;base64,${btoa(`
     <svg width="32" height="42" viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -53,7 +33,7 @@ const defaultIcon = icon({
   iconSize: [32, 42],
   iconAnchor: [16, 42],
   popupAnchor: [0, -42]
-}); */
+});
 
 interface MapPanelProps {
   view: 'osm' | 'google';
@@ -63,6 +43,7 @@ interface MapPanelProps {
   isStreaming: boolean;
   selectedLocation?: Location | null;
   isProcessingLocation?: boolean;
+  onInitialized?: () => void;
 }
 
 const ResetControl: React.FC<{ locations: Location[]; onReset: () => void }> = ({ 
@@ -117,7 +98,7 @@ export const MapPanel: React.FC<MapPanelProps> = ({
   useEffect(() => {
     if (selectedLocation) {
       setSelectedMarkerLocation(selectedLocation);
-      //setShowInfoCard(true);
+      setShowInfoCard(true);
     }
   }, [selectedLocation]);
 
@@ -193,11 +174,7 @@ export const MapPanel: React.FC<MapPanelProps> = ({
           <Marker
             key={location.id}
             position={[location.position.lat, location.position.lng]}
-            //icon={createNumberedIcon(index + 1)}
-            //icon={createPin({number:(index + 1), color: 'blue', scale: 0.7 })}
-            icon={locations.length > 1 ? createPin({ number: index + 1, color: 'blue', scale: 1 }) : createPin({ color: 'blue', scale: 0.8 })}
-            //icon={createPin({number:(index + 1), color: 'blue', scale: 0.7 })}
-
+            icon={createNumberedIcon(index + 1)}
             eventHandlers={{
               click: () => handleMarkerClick(location)
             }}

@@ -129,16 +129,30 @@ export const MapInfoCard: React.FC<MapInfoCardProps> = ({ location, onClose }) =
   const hasValidDescription = location.description && 
                             location.description !== 'No description' &&
                             location.description.trim() !== '';
-
   return (
     <div 
-      className={`fixed bottom-0 left-[400px] right-0 transform transition-all duration-300 ease-out
-                  ${isVisible ? 'translate-y-0' : 'translate-y-full'}
-                  ${isClosing ? 'pointer-events-none' : ''}`}
-      style={{ zIndex: 9999 }}
+      className={`fixed bottom-0 left-1/2 transform transition-all duration-[150ms]
+        ${isVisible ? 'translate-y-0' : 'translate-y-full'}
+        ${isClosing ? 'pointer-events-none' : ''}`}
+      style={{ 
+        zIndex: 9999,
+        transitionTimingFunction: 'cubic-bezier(0.2, -0.04, 0.43, 0.98)',
+        width: '600px',    // Fixed width
+        marginLeft: '-300px', // Half the width to center
+        left: 'calc(50% + 200px)' // Adjust for the 400px chat panel
+      }}
+
+      /*className={`fixed bottom-0 left-1/2 transform transition-all duration-[600ms]
+        ${isVisible ? 'translate-y-0' : 'translate-y-full'}
+        ${isClosing ? 'pointer-events-none' : ''}`}
+      style={{ 
+      transitionTimingFunction: 'cubic-bezier(0.56, -0.04, 0.45, 1.24)'
+      }} */
+
+
     >
       <div className="mx-8 mb-8">
-        <div className="bg-white shadow-xl rounded-lg overflow-hidden border border-gray-100">
+      <div className="bg-white shadow-xl rounded-lg overflow-hidden border border-gray-100">
           <div className="relative p-4">
             <button
               onClick={handleClose}

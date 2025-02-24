@@ -2,6 +2,8 @@ import React, { Component, ErrorInfo, ReactNode } from 'react';
 
 interface Props {
   children: ReactNode;
+  resetKeys?: any[];
+  onReset?: () => void;
 }
 
 interface State {
@@ -15,12 +17,52 @@ export class ErrorBoundary extends Component<Props, State> {
     error: null
   };
 
+  private prevKeys: any[] = [];
+
+  constructor(props: Props) {
+    super(props);
+    this.prevKeys = props.resetKeys || [];
+  }
+
   public static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('[ErrorBoundary] Error caught:', error, errorInfo);
+  }
+
+  public componentDidUpdate() {
+    const { resetKeys = [] } = this.props;
+    
+    // Check if any reset keys have changed
+    if (this.state.hasError && resetKeys.length > 0) {
+      const hasKeyChanged = resetKeys.some(
+        (key, index) => key !== this.prevKeys[index]
+      );
+
+      if (hasKeyChanged) {
+        this.handleReset();
+      }
+    }
+
+    this.prevKeys = resetKeys;
+  }
+
+  private handleReset = () => {
+    this.props.onReset?.();
+    this.setState({ hasError: false, error: null });
+  };
+
+  private getErrorMessage(error: Error | null): string {
+    if (!error) return 'An unknown error occurred';
+
+    // Handle map initialization error specifically
+    if (error.message.includes('Map container is already initialized')) {
+      return 'Map failed to initialize properly. This can happen during page refresh.';
+    }
+
+    return error.message;
   }
 
   public render() {
@@ -31,11 +73,11 @@ export class ErrorBoundary extends Component<Props, State> {
             Something went wrong
           </h2>
           <p className="text-sm text-red-600">
-            {this.state.error?.message || 'An unknown error occurred'}
+            {this.getErrorMessage(this.state.error)}
           </p>
           <button
             className="mt-2 px-3 py-1 text-sm text-red-600 border border-red-300 rounded hover:bg-red-100"
-            onClick={() => this.setState({ hasError: false, error: null })}
+            onClick={this.handleReset}
           >
             Try again
           </button>

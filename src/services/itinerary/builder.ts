@@ -714,7 +714,10 @@ import { TripDetails, Itinerary } from '../../types/itinerary';
     onUpdate?.(currentItinerary, false);
   
     try {
-      const response = await fetch('/api/chat', {
+      const API_URL = import.meta.env.VITE_API_URL + '/api/chat';
+
+      // Then in the generateItinerary function:
+      const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -727,6 +730,19 @@ import { TripDetails, Itinerary } from '../../types/itinerary';
           }]
         })
       });
+      /* const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'text/event-stream'
+        },
+        body: JSON.stringify({
+          messages: [{
+            role: 'user',
+            content: generatePrompt(tripDetails)
+          }]
+        })
+      }); */
   
       if (!response.ok) {
         throw new Error(`Failed to generate itinerary: ${response.status}`);

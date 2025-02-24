@@ -707,9 +707,11 @@ export function getCityAsLocation(city: City): Location {
   return {
     id: city.name.toLowerCase().replace(/\s+/g, '-'),
     name: `${city.name}, ${city.country}`,
+    city:`${city.name}`,
     position: city.position,
     rating: 4.8,
     reviews: 50000,
-    imageUrl: `https://source.unsplash.com/800x600/?${encodeURIComponent(city.name + ' city')}`
+    imageUrl:"default"
   };
+  //imageUrl: `https://source.unsplash.com/800x600/?${encodeURIComponent(city.name + ' city')}`
 }

@@ -135,7 +135,9 @@ function parseCoordinates(coordinates: string): [number, number] | null {
   }
 }
 
-const API_URL = '/api/chat';
+//const API_URL = '/api/chat';
+const API_URL = import.meta.env.VITE_API_URL + '/api/chat';  // Use the env variable
+
 
 export async function processLocationImages(images: File[]): Promise<Location[]> {
   console.log(`[Image Processing] Processing ${images.length} images`);
@@ -172,7 +174,9 @@ export async function processLocationImages(images: File[]): Promise<Location[]>
 
       const response = await fetch(API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           messages: [{
             role: 'user',
@@ -253,7 +257,6 @@ export async function processLocationImages(images: File[]): Promise<Location[]>
         rating: 4.5,
         reviews: Math.floor(Math.random() * 40000) + 10000
       });
-      //imageUrl: base64Image,
     } catch (error) {
       console.error(`[Image Processing] Error:`, error);
     } finally {

@@ -10,13 +10,10 @@ import { processStreamingMessage } from './services/chat/messageProcessor';
 import { validateQuery } from './services/chat/queryValidator';
 import { cityContext } from './services/cityContext';
 import { Itinerary } from './types/itinerary';
-import { X } from 'lucide-react';
 import { ItineraryPanel } from './components/TripPlanner/ItineraryPanel';
+import { X } from 'lucide-react';
 import { InviteModal } from './components/Auth/InviteModal';
 import { AuthOverlay } from './components/Auth/AuthOverlay';
-
-
-
 
 // Add Sentry and PostHog
 import * as Sentry from "@sentry/react";
@@ -44,14 +41,10 @@ if (import.meta.env.VITE_SENTRY_DSN) {
   });
 }
 
-export default function App() {
+export default function App({ Component, pageProps }: AppProps) {
+  // Add auth state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  const [isAuthenticated, setIsAuthenticated] = useState(false); // Start as false
-
-/*   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return !!localStorage.getItem('sessionToken');
-  }); */
-  
   // Initialize city service only once when app starts
   const initialCity = React.useMemo(() => getRandomCity(), []);
   const initialLocation = React.useMemo(() => getCityAsLocation(initialCity), [initialCity]);
@@ -83,49 +76,24 @@ export default function App() {
     cityContext.setCurrentCity(initialCity.name);
   }, [initialCity.name]);
 
-/*   useEffect(() => {
-    const sessionToken = localStorage.getItem('sessionToken');
-    if (sessionToken) {
-      setIsAuthenticated(true);
-    }
-  }, []); */
-
+  // Add beforeunload handler
   useEffect(() => {
-    // Check for existing session
-    const token = localStorage.getItem('sessionToken');
-    if (token) {
-      setIsAuthenticated(true);
-    }
-  }, []);
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (currentItinerary || messages.length > 1) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+        return e.returnValue;
+      }
+    };
 
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [currentItinerary, messages]);
 
-/*   // Handle successful authentication
+  // Handle successful authentication
   const handleAuthSuccess = useCallback(() => {
-    localStorage.setItem('sessionToken', 'authenticated');
     setIsAuthenticated(true);
     posthog.capture('user_authenticated');
-  }, []); */
-
-/*   // Update handleAuthSuccess
-  const handleAuthSuccess = useCallback(() => {
-    localStorage.setItem('sessionToken', 'authenticated');
-    setIsAuthenticated(true);
-    posthog.capture('user_authenticated');
-  }, []); */
-
-  // Update the success handler
-  const handleAuthSuccess = useCallback((sessionToken: string) => {
-    localStorage.setItem('sessionToken', sessionToken);
-    setIsAuthenticated(true);
-    posthog.capture('user_authenticated');
-  }, []);
-
-
-
-  // Add a logout function if needed
-  const handleLogout = useCallback(() => {
-    localStorage.removeItem('sessionToken');
-    setIsAuthenticated(false);
   }, []);
 
   const handleLocationsUpdate = useCallback((newLocations: Location[]) => {
@@ -165,7 +133,6 @@ export default function App() {
     }
   }, []);
 
-
   // In App.tsx, add closeItinerary handler
   const closeItinerary = useCallback(() => {
     setShowItinerary(false);
@@ -200,32 +167,6 @@ export default function App() {
       }
     }
   }, []);
-
-
-/*   const handleItineraryUpdate = useCallback((
-    itinerary: Partial<Itinerary>, 
-    isStreaming?: boolean
-  ) => {
-    setCurrentItinerary(itinerary as Itinerary);
-    setIsPanelAnimating(true);
-    
-    // Delay showing content until animation starts
-    setTimeout(() => {
-      setShowItinerary(true);
-      setStreamingActivity(isStreaming ?? false);
-    }, 50);
-  
-    if (itinerary.days?.length) {
-      const allLocations = itinerary.days.flatMap(day => 
-        day.activities?.map(activity => activity.location) || []
-      );
-  
-      if (allLocations.length > 0) {
-        setLocations(allLocations);
-        setSelectedLocation(allLocations[0]);
-      }
-    }
-  }, []); */
 
   const handleSendMessage = useCallback(async (content: string) => {
     setError(null);
@@ -322,7 +263,7 @@ export default function App() {
   }, []);
 
   return (
-    <div className="relative">
+    <>
       {/* Main App */}
       <div className="flex h-screen overflow-hidden">
         {/* Left Panel - Chat */}
@@ -395,11 +336,16 @@ export default function App() {
               </div>
             )}
       </div>
+  
       {/* Auth Overlay */}
-    <AuthOverlay 
-      isAuthenticated={isAuthenticated} 
-      onSuccess={handleAuthSuccess}
-    />
-  </div>
+      <AuthOverlay 
+        isAuthenticated={isAuthenticated} 
+        onSuccess={handleAuthSuccess}
+      />
+    </>
   );
 }
+
+
+
+

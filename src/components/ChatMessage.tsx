@@ -238,10 +238,9 @@ export function ChatMessage({
                 },
                 rating: loc.rating || 4.5,
                 reviews: loc.reviews || 1000,
-                imageUrl: loc.image || `https://source.unsplash.com/800x600/?${encodeURIComponent(loc.name + ' landmark')}`,
                 description: loc.description || ''
               }));
-
+              //imageUrl: loc.image || `https://source.unsplash.com/800x600/?${encodeURIComponent(loc.name + ' landmark')}`,
             if (processedLocations.length > 0) {
               onLocationsUpdate(processedLocations);
               setLocations(processedLocations);
@@ -344,7 +343,7 @@ export function ChatMessage({
       {isBot && !isStreaming && displayContent && (
         <div className="ml-11">
           <p className="text-sm font-medium text-gray-600 mb-2">
-            Not sure what to ask? Try these:
+            Try asking about ...
           </p>
           <NextBestActions 
             messageType={message.type || 'text'}

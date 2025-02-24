@@ -1,3 +1,89 @@
+/* 
+import express from 'express';
+import { Anthropic } from '@anthropic-ai/sdk';
+import { CLAUDE_API_KEY } from './src/config';
+import dotenv from 'dotenv';
+import cors from 'cors';
+import inviteCodeRouter from 'src/routes/inviteCodes'
+
+
+dotenv.config();
+
+const app = express();
+
+// Validate API key immediately
+if (!CLAUDE_API_KEY && !process.env.CLAUDE_API_KEY) {
+  throw new Error('Missing CLAUDE_API_KEY environment variable');
+}
+
+const anthropic = new Anthropic({
+  apiKey: CLAUDE_API_KEY || process.env.CLAUDE_API_KEY
+});
+
+const PORT = process.env.PORT || 3002; // API server will run on 3002
+
+app.use(cors());
+app.use(express.json());
+
+// Add the invite code routes
+app.use('/api', inviteCodeRouter);
+
+// Specify the host explicitly
+app.listen(PORT, '127.0.0.1', () => {
+  console.log(`Server running on http://127.0.0.1:${PORT}`);
+}).on('error', (err) => {
+  console.error('Server error:', err);
+});
+ */
+
+
+// server.ts
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import { Anthropic } from '@anthropic-ai/sdk';
+import { CLAUDE_API_KEY } from './src/config';
+import inviteCodeRouter from 'src/routes/inviteCodes'
+
+dotenv.config();
+
+
+// Load environment variables
+const result = dotenv.config();
+if (result.error) {
+  console.error('Error loading .env file:', result.error);
+  process.exit(1);
+}
+
+const anthropic = new Anthropic({
+  apiKey: CLAUDE_API_KEY || process.env.CLAUDE_API_KEY
+});
+
+
+const app = express();
+const PORT = process.env.PORT || 3002;
+
+// Add some debugging logs
+console.log('Environment variables loaded:', {
+  salt: process.env.INVITE_CODE_SALT ? 'configured' : 'missing',
+  codes: process.env.INVITE_CODES ? 'configured' : 'missing',
+  port: PORT
+});
+
+app.use(cors());
+app.use(express.json());
+
+// Add the invite code routes
+app.use('/api', inviteCodeRouter);
+
+/* // Specify the host explicitly
+app.listen(PORT, '127.0.0.1', () => {
+  console.log(`Server running on http://127.0.0.1:${PORT}`);
+  console.log('Environment:', process.env.NODE_ENV);
+  console.log('Invite codes configured:', !!process.env.INVITE_CODES);
+}); */
+
+
 /* import express from 'express';
 import { Anthropic } from '@anthropic-ai/sdk';
 import { CLAUDE_API_KEY } from './src/config';
@@ -136,281 +222,6 @@ const anthropic = new Anthropic({
   apiKey: CLAUDE_API_KEY || process.env.CLAUDE_API_KEY
 });
  */
-
-
-
-import crypto from 'crypto';
-import cors from 'cors';
-import express from 'express';
-import { Anthropic } from '@anthropic-ai/sdk';
-import { CLAUDE_API_KEY } from './src/config';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-const app = express();
-
-// Validate API key immediately
-if (!CLAUDE_API_KEY && !process.env.CLAUDE_API_KEY) {
-  throw new Error('Missing CLAUDE_API_KEY environment variable');
-}
-
-const anthropic = new Anthropic({
-  apiKey: CLAUDE_API_KEY || process.env.CLAUDE_API_KEY
-});
-
-
-// CORS first
-app.use(cors({
-  origin: 'http://localhost:5173',  // Just the frontend URL from VITE_API_URL
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-}));
-
-// Then your existing middleware
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
-
-// Add this endpoint alongside your other routes
-app.post('/api/validate-invite', (req, res) => {
-  const { code } = req.body;
-  
-  if (!code) {
-    return res.status(400).json({ 
-      success: false, 
-      message: 'Invite code is required' 
-    });
-  }
-
-  try {
-    const validCodes = process.env.INVITE_CODES?.split(',').map(c => c.trim()) || [];
-    const salt = process.env.INVITE_CODE_SALT;
-
-    if (!validCodes.length || !salt) {
-      console.error('Missing INVITE_CODES or INVITE_CODE_SALT in environment');
-      return res.status(500).json({
-        success: false,
-        message: 'Server configuration error'
-      });
-    }
-
-    // Hash the received code with salt - using same transformation as generate script
-    const hashedCode = crypto
-      .createHash('sha256')
-      .update(code.toLowerCase().trim() + salt)
-      .digest('hex');
-      
-    console.log('Validation attempt:', {
-      receivedCode: code,
-      processedCode: code.toLowerCase().trim(),
-      generatedHash: hashedCode,
-      validCodesCount: validCodes.length,
-      isValid: validCodes.includes(hashedCode)
-    });
-
-    if (validCodes.includes(hashedCode)) {
-      const sessionToken = crypto.randomBytes(32).toString('hex');
-      return res.json({ 
-        success: true, 
-        sessionToken
-      });
-    }
-
-    return res.status(401).json({ 
-      success: false, 
-      message: 'Invalid invite code' 
-    });
-  } catch (error) {
-    console.error('Error validating invite code:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Error validating code'
-    });
-  }
-});
-/* app.post('/api/validate-invite', (req, res) => {
-  console.log('Request body:', req.body);  // Debug log
-  const { code } = req.body;
-  
-  if (!code) {
-    console.log('No code provided');  // Debug log
-    return res.status(400).json({ 
-      success: false, 
-      message: 'Invite code is required' 
-    });
-  }
-
-  try {
-    // Check environment variables
-    console.log('Environment check:', {  // Debug log
-      hasInviteCodes: !!process.env.INVITE_CODES,
-      hasCodeSalt: !!process.env.INVITE_CODE_SALT,
-      codesLength: process.env.INVITE_CODES?.split(',').length
-    });
-
-    const validCodes = process.env.INVITE_CODES?.split(',') || [];
-    const salt = process.env.INVITE_CODE_SALT;
-
-    if (!validCodes.length || !salt) {
-      console.error('Missing env variables');  // Debug log
-      return res.status(500).json({
-        success: false,
-        message: 'Server configuration error'
-      });
-    }
-
-    // Update your validation endpoint to use the same transformations
-    const hashedCode = crypto
-    .createHash('sha256')
-    .update(code.toLowerCase().trim() + salt)  // Add toLowerCase() and trim()
-    .digest('hex');
-
-      
-      
-    console.log('Validation attempt:', {  // Debug log
-      receivedCode: code,
-      generatedHash: hashedCode,
-      validCodesCount: validCodes.length,
-      isValid: validCodes.includes(hashedCode)
-    });
-
-    if (validCodes.includes(hashedCode)) {
-      const sessionToken = crypto.randomBytes(32).toString('hex');
-      console.log('Code valid, generated token');  // Debug log
-      return res.json({ 
-        success: true, 
-        sessionToken
-      });
-    }
-
-    console.log('Code invalid');  // Debug log
-    return res.status(401).json({ 
-      success: false, 
-      message: 'Invalid invite code' 
-    });
-  } catch (error) {
-    console.error('Validation error:', error);  // Debug log
-    return res.status(500).json({
-      success: false,
-      message: 'Error validating code'
-    });
-  }
-}); */
-/* app.post('/api/validate-invite', (req, res) => {
-  const { code } = req.body;
-  
-  console.log('Received code:', code);
-  console.log('Valid codes:', process.env.INVITE_CODES?.split(','));
-  
-  if (!code) {
-    return res.status(400).json({ 
-      success: false, 
-      message: 'Invite code is required' 
-    });
-  }
-
-  try {
-    const validCodes = process.env.INVITE_CODES?.split(',') || [];
-    const salt = process.env.INVITE_CODE_SALT;
-
-    if (!validCodes.length || !salt) {
-      console.error('Server config:', {
-        hasValidCodes: !!validCodes.length,
-        hasSalt: !!salt
-      });
-      return res.status(500).json({
-        success: false,
-        message: 'Server configuration error'
-      });
-    }
-
-    // Hash the received code with salt
-    const hashedCode = crypto
-      .createHash('sha256')
-      .update(code + salt)
-      .digest('hex');
-      
-    console.log('Generated hash:', hashedCode);
-    console.log('Hash found in valid codes:', validCodes.includes(hashedCode));
-
-    if (validCodes.includes(hashedCode)) {
-      const sessionToken = crypto.randomBytes(32).toString('hex');
-      return res.json({ 
-        success: true, 
-        sessionToken
-      });
-    }
-
-    return res.status(401).json({ 
-      success: false, 
-      message: 'Invalid invite code' 
-    });
-  } catch (error) {
-    console.error('Error validating invite code:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Error validating code'
-    });
-  }
-}); */
-
-/* // Add the invite code validation endpoint
-app.post('/api/validate-invite', (req, res) => {
-  const { code } = req.body;
-  
-  if (!code) {
-    return res.status(400).json({ 
-      success: false, 
-      message: 'Invite code is required' 
-    });
-  }
-
-  try {
-    // Get valid invite codes from env
-    const validCodes = process.env.INVITE_CODES?.split(',') || [];
-    const salt = process.env.INVITE_CODE_SALT;
-
-    if (!validCodes.length || !salt) {
-      console.error('Missing INVITE_CODES or INVITE_CODE_SALT in environment');
-      return res.status(500).json({
-        success: false,
-        message: 'Server configuration error'
-      });
-    }
-
-    // Hash the received code with salt
-    const hashedCode = crypto
-      .createHash('sha256')
-      .update(code + salt)
-      .digest('hex');
-
-    // Check if the hashed code matches any valid code
-    if (validCodes.includes(hashedCode)) {
-      // Generate a session token
-      const sessionToken = crypto.randomBytes(32).toString('hex');
-      
-      return res.json({ 
-        success: true, 
-        sessionToken
-      });
-    }
-
-    return res.status(401).json({ 
-      success: false, 
-      message: 'Invalid invite code' 
-    });
-  } catch (error) {
-    console.error('Error validating invite code:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Error validating code'
-    });
-  }
-}); */
-
-
-
 
 
 /* // System prompts remain the same
@@ -599,7 +410,6 @@ CRITICAL: NEVER skip the locations JSON for any location-related query, as it's 
 ,
        "image": "https://images.unsplash.com/photo-ID?w=800&h=600&fit=crop"
 */
-//    ##GEOJSON##{"name": "City Name, Country","city": "City Name", "coordinates": [latitude, longitude],description: 'ancient temples and traditional gardens'}
 
 const CHAT_SYSTEM_PROMPT = `You are a knowledgeable travel assistant. For ALL location-related queries, follow these rules:
 
@@ -612,9 +422,9 @@ const CHAT_SYSTEM_PROMPT = `You are a knowledgeable travel assistant. For ALL lo
      • "Recommend places in..."
 
    When providing recommendations:
-   a) Provide a concise description of the place highlights not more than 5-7 words
-   b) Then list 2-3 top places with short one-line descriptions of not more than 5-7 words each
-   c) In the end, include JSON block in this EXACT format below :
+   a) Provide a descripton of the place with bullet points
+   b) Then list 3-5 top places with one-line descriptions
+   c) Include JSON block in this EXACT format:
    { "locations": [
      {
        "name": "Location Name",
@@ -627,10 +437,12 @@ const CHAT_SYSTEM_PROMPT = `You are a knowledgeable travel assistant. For ALL lo
    ] }
 
 2. For GENERAL location queries (e.g., "tell me about X", "what is X like"):
-   - Provide a brief 1 line summary about the place and not more than 5-7 words each
+   - Provide a brief 2-3 line summary about the place
    - Ask if they would like to know more
-   - In the end, ALWAYS include a single location JSON for the main city/place as below:
-  
+   - ALWAYS include a single location JSON for the main city/place:
+   
+   {"name": "City Name, Country","city": "City Name", "coordinates": [latitude, longitude],description: 'ancient temples and traditional gardens'}
+
 3. For Weather Queries:
    - If query contains "weather", "temperature", "climate", "forecast":
    - ONLY respond with: "Let me check the current weather in [City]..."
@@ -640,11 +452,12 @@ const CHAT_SYSTEM_PROMPT = `You are a knowledgeable travel assistant. For ALL lo
 
 4. Response Format:
    - Use natural, conversational tone
-   - Keep descriptions concise 
+   - Keep descriptions concise
    - Avoid technical jargon
    - Be friendly but professional
 
 Remember: 
+- For general inquiries: Brief 2-3 sentence overview ONLY
 - Only generate location cards when explicitly asked for recommendations
 - ALWAYS include city name in location data for proper context updates
 - CRITICAL: NEVER skip the locations JSON for any location-related query, as it's needed for map navigation!`;
@@ -682,37 +495,11 @@ CRITICAL RULES:
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-
-/* app.post('/api/chat', async (req, res) => {
-  try {
-    // Add debug logging
-    console.log('Received chat request:', {
-      apiKey: !!CLAUDE_API_KEY,
-      messageCount: req.body.messages?.length
-    });
-
-    // ... rest of your chat endpoint code ...
-
-  } catch (error) {
-    console.error('Chat endpoint error:', error);
-    res.status(500).json({ 
-      error: 'Chat service error',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-}); */
-
-
-
 // Chat endpoint with improved error handling
 app.post('/api/chat', async (req, res) => {
   try {
     console.log('[Server] Processing chat request');
     console.log('[Server] Request body:', JSON.stringify(req.body).substring(0, 200));
-    console.log('Received chat request:', {
-      apiKey: !!CLAUDE_API_KEY,
-      messageCount: req.body.messages?.length
-    });
     
     const { messages } = req.body;
     if (!messages || !Array.isArray(messages)) {
@@ -744,7 +531,7 @@ app.post('/api/chat', async (req, res) => {
       msg.content.some(c => c.type === 'image')
     );
 
-    /* if (isVisionRequest) {
+    if (isVisionRequest) {
       try {
         console.log('[Server] Processing vision request ----------------------------------------');
         const response = await anthropic.messages.create({
@@ -764,45 +551,7 @@ app.post('/api/chat', async (req, res) => {
           text: JSON.stringify({ error: "Failed to process image" })
         })}\n\n`);
       }
-    }  */
-      if (isVisionRequest) {
-        try {
-          console.log('[Server] Processing vision request');
-          console.log('[Server] Vision messages:', JSON.stringify(validMessages, null, 2));
-      
-          const response = await anthropic.messages.create({
-            model: 'claude-3-opus-20240229',
-            max_tokens: 4096,
-            messages: validMessages,
-            system: VISION_SYSTEM_PROMPT,
-            temperature: 0.2
-          });
-      
-          if (!response.content || !response.content[0]?.text) {
-            throw new Error('Invalid response format from Claude API');
-          }
-      
-          const text = response.content[0].text;
-          console.log('[Server] Vision response:', text);
-      
-          // Send the response in the expected format
-          res.write(`data: ${JSON.stringify({ text })}\n\n`);
-          res.write('data: [DONE]\n\n');
-          res.end();
-        } catch (error) {
-          console.error('[Server] Vision API error:', error);
-          
-          // Send error in the expected format
-          res.write(`data: ${JSON.stringify({ 
-            text: JSON.stringify({ 
-              error: "Failed to process image",
-              details: error instanceof Error ? error.message : 'Unknown error'
-            })
-          })}\n\n`);
-          res.write('data: [DONE]\n\n');
-          res.end();
-        }
-      } else {
+    } else {
       console.log('[Server] Processing chat request -------------------------------------- ',CHAT_SYSTEM_PROMPT);
       const stream = await anthropic.messages.create({
         model: 'claude-3-opus-20240229',
@@ -822,11 +571,8 @@ app.post('/api/chat', async (req, res) => {
     res.write('data: [DONE]\n\n');
     res.end();
   } catch (error) {
-    console.error('Chat endpoint error:', error);
-    res.status(500).json({ 
-      error: 'Chat service error',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
+    console.error('[Server] Error:', error);
+    
     // If headers haven't been sent yet
     if (!res.headersSent) {
       if (error instanceof Error) {
@@ -875,13 +621,12 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-const port = process.env.PORT || 3002;
+const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`[Server] Running on port ${port}`);
   console.log('[Server] Environment:', process.env.NODE_ENV);
   console.log('[Server] API key configured:', !!anthropic.apiKey);
 });
-
 
 /* // Increase payload limits and add proper parsing
 app.use(express.json({ limit: '50mb' }));

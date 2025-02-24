@@ -9,6 +9,7 @@ import {
 import { cityContext } from '../services/cityContext';
 import { CITIES } from '../services/cities/data';
 
+
 interface Action {
   id: string;
   label: string;
@@ -86,6 +87,7 @@ const getLocationCharacteristics = (cityName: string) => {
 
 const getContextualActions = (messageType: string, hasLocations: boolean): Action[] => {
   const currentCity = cityContext.getCurrentCity();
+  console.log('[NextBestActions] Current city: ------------------', currentCity);
   const locationContext = currentCity ? ` in ${currentCity}` : '';
   const characteristics = currentCity ? getLocationCharacteristics(currentCity) : null;
   

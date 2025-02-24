@@ -16,11 +16,11 @@ class CityContextManager {
   
     setCurrentCity(city: string) {
       // Only update if city actually changes
-      if (this.currentCity !== city) {
+     //if (this.currentCity !== city) {
         console.log('[CityContext] Updating current city:', city);
         this.currentCity = city;
         this.notifyListeners();
-      }
+      //}
     }
   
     getCurrentCity(): string {

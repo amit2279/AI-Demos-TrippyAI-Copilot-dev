@@ -54,13 +54,13 @@ export const QuickActionsPanel: React.FC<QuickActionsPanelProps> = ({ onActionCl
             <span className="text-xs text-gray-600">Find Place</span>
           </button>
           
-          <button
+          {/* <button
             onClick={() => onActionClick('flights')}
             className="flex-1 flex flex-col items-center justify-center p-2 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <Plane size={20} className="text-orange-500 mb-1" />
             <span className="text-xs text-gray-600">Flights</span>
-          </button>
+          </button> */}
         </div>
       </div>
     </div>

@@ -141,10 +141,10 @@ export async function processLocationImages(images: File[]): Promise<Location[]>
           id: `loc-${Date.now()}-${Math.random().toString(36).slice(2)}`,
           name: locationData.name,
           country: locationData.country,
-          position: { lat, lng },
-          imageUrl: base64Image
+          position: { lat, lng }
         });
-
+        //imageUrl: base64Image
+        //imageUrl: loc.image || `https://source.unsplash.com/800x600/?${encodeURIComponent(loc.name + ' landmark')}`,
       } catch (error) {
         console.error(`[Image Processing] Error:`, error);
         continue;

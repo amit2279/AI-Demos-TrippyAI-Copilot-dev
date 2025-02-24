@@ -10,12 +10,10 @@ import { processStreamingMessage } from './services/chat/messageProcessor';
 import { validateQuery } from './services/chat/queryValidator';
 import { cityContext } from './services/cityContext';
 import { Itinerary } from './types/itinerary';
-import { X } from 'lucide-react';
 import { ItineraryPanel } from './components/TripPlanner/ItineraryPanel';
+import { X } from 'lucide-react';
 import { InviteModal } from './components/Auth/InviteModal';
 import { AuthOverlay } from './components/Auth/AuthOverlay';
-
-
 
 
 // Add Sentry and PostHog
@@ -44,14 +42,10 @@ if (import.meta.env.VITE_SENTRY_DSN) {
   });
 }
 
-export default function App() {
+export default function App({ Component, pageProps }: AppProps) {
+  // Add auth state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  const [isAuthenticated, setIsAuthenticated] = useState(false); // Start as false
-
-/*   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return !!localStorage.getItem('sessionToken');
-  }); */
-  
   // Initialize city service only once when app starts
   const initialCity = React.useMemo(() => getRandomCity(), []);
   const initialLocation = React.useMemo(() => getCityAsLocation(initialCity), [initialCity]);
@@ -83,49 +77,24 @@ export default function App() {
     cityContext.setCurrentCity(initialCity.name);
   }, [initialCity.name]);
 
-/*   useEffect(() => {
-    const sessionToken = localStorage.getItem('sessionToken');
-    if (sessionToken) {
-      setIsAuthenticated(true);
-    }
-  }, []); */
-
+  // Add beforeunload handler
   useEffect(() => {
-    // Check for existing session
-    const token = localStorage.getItem('sessionToken');
-    if (token) {
-      setIsAuthenticated(true);
-    }
-  }, []);
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (currentItinerary || messages.length > 1) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+        return e.returnValue;
+      }
+    };
 
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [currentItinerary, messages]);
 
-/*   // Handle successful authentication
+  // Handle successful authentication
   const handleAuthSuccess = useCallback(() => {
-    localStorage.setItem('sessionToken', 'authenticated');
     setIsAuthenticated(true);
     posthog.capture('user_authenticated');
-  }, []); */
-
-/*   // Update handleAuthSuccess
-  const handleAuthSuccess = useCallback(() => {
-    localStorage.setItem('sessionToken', 'authenticated');
-    setIsAuthenticated(true);
-    posthog.capture('user_authenticated');
-  }, []); */
-
-  // Update the success handler
-  const handleAuthSuccess = useCallback((sessionToken: string) => {
-    localStorage.setItem('sessionToken', sessionToken);
-    setIsAuthenticated(true);
-    posthog.capture('user_authenticated');
-  }, []);
-
-
-
-  // Add a logout function if needed
-  const handleLogout = useCallback(() => {
-    localStorage.removeItem('sessionToken');
-    setIsAuthenticated(false);
   }, []);
 
   const handleLocationsUpdate = useCallback((newLocations: Location[]) => {
@@ -165,7 +134,6 @@ export default function App() {
     }
   }, []);
 
-
   // In App.tsx, add closeItinerary handler
   const closeItinerary = useCallback(() => {
     setShowItinerary(false);
@@ -200,32 +168,6 @@ export default function App() {
       }
     }
   }, []);
-
-
-/*   const handleItineraryUpdate = useCallback((
-    itinerary: Partial<Itinerary>, 
-    isStreaming?: boolean
-  ) => {
-    setCurrentItinerary(itinerary as Itinerary);
-    setIsPanelAnimating(true);
-    
-    // Delay showing content until animation starts
-    setTimeout(() => {
-      setShowItinerary(true);
-      setStreamingActivity(isStreaming ?? false);
-    }, 50);
-  
-    if (itinerary.days?.length) {
-      const allLocations = itinerary.days.flatMap(day => 
-        day.activities?.map(activity => activity.location) || []
-      );
-  
-      if (allLocations.length > 0) {
-        setLocations(allLocations);
-        setSelectedLocation(allLocations[0]);
-      }
-    }
-  }, []); */
 
   const handleSendMessage = useCallback(async (content: string) => {
     setError(null);
@@ -322,84 +264,88 @@ export default function App() {
   }, []);
 
   return (
-    <div className="relative">
-      {/* Main App */}
-      <div className="flex h-screen overflow-hidden">
-        {/* Left Panel - Chat */}
-        <div className="w-[400px] flex-shrink-0 bg-white z-40 relative shadow-xl">
-          <ChatPanel
-            messages={messages}
-            onSendMessage={handleSendMessage}
-            isLoading={isLoading}
-            onLocationsUpdate={handleLocationsUpdate}
-            onLocationSelect={handleLocationSelect}
-            streamingMessage={currentStreamingMessage}
-            selectedLocation={selectedLocation}
-            error={error}
-            weatherLocation={currentWeatherLocation}
-            onImageSearch={handleImageSearch}
-            isProcessingImages={isProcessingImages}
-            onItineraryUpdate={handleItineraryUpdate}
-          />
-        </div>
-        
-        {/* Center Panel - Map */}
-        <div className="flex-1 relative">
-          <div className="absolute top-4 right-4 z-40">
-            <MapToggle view={mapView} onToggle={setMapView} />
-          </div>
-          <MapPanel
-            view={mapView}
-            locations={locations}
-            onLocationSelect={handleLocationSelect}
-            isLoading={isLoading}
-            isStreaming={isStreaming}
-            selectedLocation={selectedLocation}
-            isProcessingLocation={isProcessingImages}
-          />
-        </div>
-  
-        {/* Itinerary Panel */}
-        {(showItinerary || isPanelAnimating) && currentItinerary && (
-              <div 
-                className="w-[520px] flex-shrink-0 bg-white shadow-lg overflow-y-auto transform transition-all duration-500 ease-out absolute top-0 bottom-0 z-40"
-                style={{
-                  left: '400px',
-                  transform: `translateX(${showItinerary ? '0' : '-520px'})`,
-                  opacity: showItinerary ? 1 : 0,
-                  visibility: isPanelAnimating || showItinerary ? 'visible' : 'hidden'
-                }}
-                onTransitionEnd={handleTransitionEnd}
-              >
-                {/* ... rest of itinerary panel ... */}
-                <button 
-                  onClick={closeItinerary}
-                  className="absolute top-4 right-4 z-50 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white/90 transition-colors shadow-md"
-                  aria-label="Close itinerary"
-                >
-                  <X size={20} className="text-gray-600" />
-                </button>
-                
-                <ItineraryPanel
-                  itinerary={currentItinerary}
-                  onLocationSelect={(locationId) => {
-                    const location = locations.find(loc => loc.id === locationId);
-                    if (location) {
-                      handleLocationSelect(location);
-                    }
-                  }}
-                  selectedLocationId={selectedLocation?.id}
-                  onLocationsUpdate={handleLocationsUpdate}
-                  streamingActivity={streamingActivity}
-                />
-              </div>
-            )}
+  <>
+    {/* Main App */}
+    <div className="flex h-screen overflow-hidden">
+      {/* Left Panel - Chat */}
+      <div className="w-[400px] flex-shrink-0 bg-white z-40 relative shadow-xl">
+        <ChatPanel
+          messages={messages}
+          onSendMessage={handleSendMessage}
+          isLoading={isLoading}
+          onLocationsUpdate={handleLocationsUpdate}
+          onLocationSelect={handleLocationSelect}
+          streamingMessage={currentStreamingMessage}
+          selectedLocation={selectedLocation}
+          error={error}
+          weatherLocation={currentWeatherLocation}
+          onImageSearch={handleImageSearch}
+          isProcessingImages={isProcessingImages}
+          onItineraryUpdate={handleItineraryUpdate}
+        />
       </div>
-      {/* Auth Overlay */}
+      
+      {/* Center Panel - Map */}
+      <div className="flex-1 relative">
+        <div className="absolute top-4 right-4 z-40">
+          <MapToggle view={mapView} onToggle={setMapView} />
+        </div>
+        <MapPanel
+          view={mapView}
+          locations={locations}
+          onLocationSelect={handleLocationSelect}
+          isLoading={isLoading}
+          isStreaming={isStreaming}
+          selectedLocation={selectedLocation}
+          isProcessingLocation={isProcessingImages}
+        />
+      </div>
+
+      {/* Itinerary Panel */}
+      {(showItinerary || isPanelAnimating) && currentItinerary && (
+            <div 
+              className="w-[520px] flex-shrink-0 bg-white shadow-lg overflow-y-auto transform transition-all duration-500 ease-out absolute top-0 bottom-0 z-40"
+              style={{
+                left: '400px',
+                transform: `translateX(${showItinerary ? '0' : '-520px'})`,
+                opacity: showItinerary ? 1 : 0,
+                visibility: isPanelAnimating || showItinerary ? 'visible' : 'hidden'
+              }}
+              onTransitionEnd={handleTransitionEnd}
+            >
+              {/* ... rest of itinerary panel ... */}
+              <button 
+                onClick={closeItinerary}
+                className="absolute top-4 right-4 z-50 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white/90 transition-colors shadow-md"
+                aria-label="Close itinerary"
+              >
+                <X size={20} className="text-gray-600" />
+              </button>
+              
+              <ItineraryPanel
+                itinerary={currentItinerary}
+                onLocationSelect={(locationId) => {
+                  const location = locations.find(loc => loc.id === locationId);
+                  if (location) {
+                    handleLocationSelect(location);
+                  }
+                }}
+                selectedLocationId={selectedLocation?.id}
+                onLocationsUpdate={handleLocationsUpdate}
+                streamingActivity={streamingActivity}
+              />
+            </div>
+          )}
+    </div>
+    {/* Auth Overlay */}
     <AuthOverlay 
       isAuthenticated={isAuthenticated} 
       onSuccess={handleAuthSuccess}
     />
-  </div>
-  );
+  </>
+);
 }
+
+
+
+
