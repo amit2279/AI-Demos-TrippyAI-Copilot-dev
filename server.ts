@@ -26,9 +26,8 @@ app.use('/api', validateInviteRoute);
 // CORS configuration
 const allowedOrigins = [
   'http://localhost:5173',
-  'https://ai-demo-trippy-3oh6mos91-amits-projects-04ce3c09.vercel.app', // Add your exact Vercel domain
-  'https://ai-demo-trippy-ai.vercel.app',
-  /\.vercel\.app$/ // Allows all vercel.app subdomains
+    'https://ai-demo-trippy.vercel.app',
+    /https:\/\/ai-demo-trippy-.*-amits-projects-04ce3c09\.vercel\.app/
 ];
 
 app.use(cors({
