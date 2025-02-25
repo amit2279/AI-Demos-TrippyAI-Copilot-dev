@@ -173,7 +173,7 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Add this endpoint alongside your other routes
-app.post('/api/validate-invite', (req, res) => {
+/* app.post('/api/validate-invite', (req, res) => {
   const { code } = req.body;
   
   if (!code) {
@@ -228,7 +228,8 @@ app.post('/api/validate-invite', (req, res) => {
       message: 'Error validating code'
     });
   }
-});
+}); */
+
 /* app.post('/api/validate-invite', (req, res) => {
   console.log('Request body:', req.body);  // Debug log
   const { code } = req.body;
@@ -679,8 +680,8 @@ CRITICAL RULES:
 
 
 // Increase payload limits and add proper parsing
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+//app.use(express.json({ limit: '50mb' }));
+//app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 
 /* app.post('/api/chat', async (req, res) => {
@@ -705,7 +706,7 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 
 // Chat endpoint with improved error handling
-app.post('/api/chat', async (req, res) => {
+/* app.post('/api/chat', async (req, res) => {
   try {
     console.log('[Server] Processing chat request');
     console.log('[Server] Request body:', JSON.stringify(req.body).substring(0, 200));
@@ -743,35 +744,13 @@ app.post('/api/chat', async (req, res) => {
       Array.isArray(msg.content) && 
       msg.content.some(c => c.type === 'image')
     );
-
-    /* if (isVisionRequest) {
-      try {
-        console.log('[Server] Processing vision request ----------------------------------------');
-        const response = await anthropic.messages.create({
-          model: 'claude-3-opus-20240229',
-          max_tokens: 4096,
-          messages: validMessages,
-          system: VISION_SYSTEM_PROMPT,
-          temperature: 0.2
-        });
-
-        const text = response.content[0].text;
-        console.log('[Server] Vision response:', text.substring(0, 200));
-        res.write(`data: ${JSON.stringify({ text })}\n\n`);
-      } catch (error) {
-        console.error('[Server] Vision API error:', error);
-        res.write(`data: ${JSON.stringify({ 
-          text: JSON.stringify({ error: "Failed to process image" })
-        })}\n\n`);
-      }
-    }  */
       if (isVisionRequest) {
         try {
           console.log('[Server] Processing vision request');
           console.log('[Server] Vision messages:', JSON.stringify(validMessages, null, 2));
       
           const response = await anthropic.messages.create({
-            model: 'claude-3-opus-20240229',
+            model: 'claude-3-haiku-20240307',
             max_tokens: 4096,
             messages: validMessages,
             system: VISION_SYSTEM_PROMPT,
@@ -805,7 +784,7 @@ app.post('/api/chat', async (req, res) => {
       } else {
       console.log('[Server] Processing chat request -------------------------------------- ',CHAT_SYSTEM_PROMPT);
       const stream = await anthropic.messages.create({
-        model: 'claude-3-opus-20240229',
+        model: 'claude-3-haiku-20240307',
         max_tokens: 4096,
         messages: validMessages,
         system: CHAT_SYSTEM_PROMPT,
@@ -873,6 +852,126 @@ app.post('/api/chat', async (req, res) => {
       console.error('Error while sending error response:', e);
     }
   }
+}); */
+
+app.post('/api/chat', async (req, res) => {
+  try {
+    console.log('[Server] Processing chat request');
+    
+    const { messages } = req.body;
+    if (!messages || !Array.isArray(messages)) {
+      return res.status(400).json({ error: 'Invalid request format' });
+    }
+
+    // Filter out invalid messages
+    const validMessages = messages.filter(msg => {
+      if (Array.isArray(msg.content)) {
+        return msg.content.length > 0 && msg.content.every(c => 
+          (c.type === 'text' && c.text?.trim()) || 
+          (c.type === 'image' && c.source?.data)
+        );
+      }
+      return msg.content?.trim();
+    });
+
+    // Set up SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    const isVisionRequest = messages.some(msg => 
+      Array.isArray(msg.content) && 
+      msg.content.some(c => c.type === 'image')
+    );
+
+    /* const response = await anthropic.messages.create({
+      model: 'claude-3-haiku-20240307',
+      max_tokens: 4096,
+      messages: validMessages,
+      system: VISION_SYSTEM_PROMPT,
+      temperature: 0.2,
+      stream: true
+    }); */
+
+    if (isVisionRequest) {
+      try {
+        console.log('[Server] Processing vision request');
+        console.log('[Server] Vision messages:', JSON.stringify(validMessages, null, 2));
+    
+        /* const response = await anthropic.messages.create({
+          model: 'claude-3-opus-20240229',
+          max_tokens: 4096,
+          messages: validMessages,
+          system: 'You are a computer vision expert. Analyze the image and provide location details in valid JSON format.',
+          temperature: 0.2
+        }); */
+
+        const response = await anthropic.messages.create({
+          model: 'claude-3-haiku-20240307',
+          max_tokens: 4096,
+          messages: validMessages,
+          system: VISION_SYSTEM_PROMPT,
+          temperature: 0.2
+        });
+    
+        if (!response.content || !response.content[0]?.text) {
+          throw new Error('Invalid response format from Claude API');
+        }
+    
+        const text = response.content[0].text;
+        console.log('[Server] Vision response:', text);
+    
+        // Send the response in the expected format
+        res.write(`data: ${JSON.stringify({ text })}\n\n`);
+        res.write('data: [DONE]\n\n');
+        res.end();
+      } catch (error) {
+        console.error('[Server] Vision API error:', error);
+        
+        // Send error in the expected format
+        res.write(`data: ${JSON.stringify({ 
+          text: JSON.stringify({ 
+            error: "Failed to process image",
+            details: error instanceof Error ? error.message : 'Unknown error'
+          })
+        })}\n\n`);
+        res.write('data: [DONE]\n\n');
+        res.end();
+      }
+    } else {
+      console.log('[Server] Processing chat request');
+      const stream = await anthropic.messages.create({
+        model: 'claude-3-haiku-20240307',
+        max_tokens: 4096,
+        messages: validMessages,
+        system: CHAT_SYSTEM_PROMPT,
+        stream: true
+      });
+
+      for await (const chunk of stream) {
+        if (chunk.type === 'content_block_delta') {
+          res.write(`data: ${JSON.stringify({ text: chunk.delta.text })}\n\n`);
+        }
+      }
+
+      res.write('data: [DONE]\n\n');
+      res.end();
+    }
+  } catch (error) {
+    console.error('[Server] Error:', error);
+    
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to process request' });
+    } else {
+      try {
+        res.write(`data: ${JSON.stringify({ error: 'Stream error occurred' })}\n\n`);
+        res.write('data: [DONE]\n\n');
+        res.end();
+      } catch (e) {
+        console.error('[Server] Error sending error response:', e);
+      }
+    }
+  }
 });
 
 const port = process.env.PORT || 3002;
@@ -881,6 +980,156 @@ app.listen(port, () => {
   console.log('[Server] Environment:', process.env.NODE_ENV);
   console.log('[Server] API key configured:', !!anthropic.apiKey);
 });
+
+
+
+
+
+
+
+
+
+
+
+/* // Validate API key immediately
+if (!process.env.CLAUDE_API_KEY) {
+  throw new Error('Missing CLAUDE_API_KEY environment variable');
+}
+
+const anthropic = new Anthropic({
+  apiKey: process.env.CLAUDE_API_KEY
+});
+
+// CORS configuration
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type']
+}));
+
+// Body parsing middleware
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Chat endpoint
+app.post('/api/chat', async (req, res) => {
+  try {
+    console.log('[Server] Processing chat request');
+    
+    const { messages } = req.body;
+    if (!messages || !Array.isArray(messages)) {
+      return res.status(400).json({ error: 'Invalid request format' });
+    }
+
+    // Filter out invalid messages
+    const validMessages = messages.filter(msg => {
+      if (Array.isArray(msg.content)) {
+        return msg.content.length > 0 && msg.content.every(c => 
+          (c.type === 'text' && c.text?.trim()) || 
+          (c.type === 'image' && c.source?.data)
+        );
+      }
+      return msg.content?.trim();
+    });
+
+    // Set up SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    const isVisionRequest = messages.some(msg => 
+      Array.isArray(msg.content) && 
+      msg.content.some(c => c.type === 'image')
+    );
+
+    if (isVisionRequest) {
+      console.log('[Server] Processing vision request');
+      try {
+        const response = await anthropic.messages.create({
+          model: 'claude-3-haiku-20240307',
+          max_tokens: 4096,
+          messages: validMessages,
+          system: 'You are a computer vision expert. Analyze the image and provide location details in valid JSON format.',
+          temperature: 0.2
+        });
+
+        if (!response.content || !response.content[0]?.text) {
+          throw new Error('Invalid response format from Claude API');
+        }
+
+        const text = response.content[0].text;
+        console.log('[Server] Vision response:', text);
+
+        // Send the response in the expected format
+        res.write(`data: ${JSON.stringify({ text })}\n\n`);
+        res.write('data: [DONE]\n\n');
+        res.end();
+      } catch (error) {
+        console.error('[Server] Vision API error:', error);
+        
+        // Send error in the expected format
+        res.write(`data: ${JSON.stringify({ 
+          text: JSON.stringify({ 
+            error: "Failed to process image",
+            details: error instanceof Error ? error.message : 'Unknown error'
+          })
+        })}\n\n`);
+        res.write('data: [DONE]\n\n');
+        res.end();
+      }
+    } else {
+      console.log('[Server] Processing chat request');
+      const stream = await anthropic.messages.create({
+        model: 'claude-3-haiku-20240307',
+        max_tokens: 4096,
+        messages: validMessages,
+        stream: true
+      });
+
+      for await (const chunk of stream) {
+        if (chunk.type === 'content_block_delta') {
+          res.write(`data: ${JSON.stringify({ text: chunk.delta.text })}\n\n`);
+        }
+      }
+
+      res.write('data: [DONE]\n\n');
+      res.end();
+    }
+  } catch (error) {
+    console.error('[Server] Error:', error);
+    
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to process request' });
+    } else {
+      try {
+        res.write(`data: ${JSON.stringify({ error: 'Stream error occurred' })}\n\n`);
+        res.write('data: [DONE]\n\n');
+        res.end();
+      } catch (e) {
+        console.error('[Server] Error sending error response:', e);
+      }
+    }
+  }
+});
+
+const port = process.env.PORT || 3002;
+app.listen(port, () => {
+  console.log(`[Server] Running on port ${port}`);
+  console.log('[Server] Environment:', process.env.NODE_ENV);
+  console.log('[Server] API key configured:', !!anthropic.apiKey);
+}); */
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 /* // Increase payload limits and add proper parsing
@@ -927,7 +1176,7 @@ app.post('/api/chat', async (req, res) => {
       try {
         console.log('[Server] Processing vision request');
         const response = await anthropic.messages.create({
-          model: 'claude-3-opus-20240229',
+          model: 'claude-3-haiku-20240307',
           max_tokens: 4096,
           messages: validMessages,
           system: VISION_SYSTEM_PROMPT,
@@ -946,7 +1195,7 @@ app.post('/api/chat', async (req, res) => {
     } else {
       console.log('[Server] Processing chat request');
       const stream = await anthropic.messages.create({
-        model: 'claude-3-opus-20240229',
+        model: 'claude-3-haiku-20240307',
         max_tokens: 4096,
         messages: validMessages,
         system: CHAT_SYSTEM_PROMPT,
@@ -1129,7 +1378,7 @@ app.post('/api/chat', async (req, res) => {
     if (isVisionRequest) {
       try {
         const response = await anthropic.messages.create({
-          model: 'claude-3-opus-20240229',
+          model: 'claude-3-haiku-20240307',
           max_tokens: 4096,
           messages,
           system: VISION_SYSTEM_PROMPT,
@@ -1146,7 +1395,7 @@ app.post('/api/chat', async (req, res) => {
       }
     } else {
       const stream = await anthropic.messages.create({
-        model: 'claude-3-opus-20240229',
+        model: 'claude-3-haiku-20240307',
         max_tokens: 4096,
         messages,
         system: CHAT_SYSTEM_PROMPT,

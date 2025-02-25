@@ -167,8 +167,8 @@ export function processStreamingMessage(content: string): ProcessedMessage {
       try {
         const parsedJson = JSON.parse(validJson);
         const locations = parsedJson.locations || [];
-        cityContext.setCurrentCity(locations[0].name);
-        console.log('[MessageProcessor] setCurrentCity :',locations[0].name);
+        cityContext.setCurrentCity(locations[0].city);
+        console.log('[MessageProcessor] setCurrentCity :',locations[0].city);
         console.log('[MessageProcessor] Extracted locations:', {
           count: locations.length,
           locations: locations.map((loc: any) => ({

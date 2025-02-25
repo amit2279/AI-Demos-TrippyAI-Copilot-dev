@@ -227,6 +227,7 @@ export function ChatMessage({
         try {
           const data = JSON.parse(jsonContent);
           if (data.locations && Array.isArray(data.locations)) {
+            console.log('data.locations --------------- ', data.locations[0].city);
             const processedLocations = data.locations
               .filter(loc => loc && loc.coordinates && Array.isArray(loc.coordinates) && loc.coordinates.length === 2)
               .map((loc: any, index: number) => ({
@@ -236,6 +237,7 @@ export function ChatMessage({
                   lat: Number(loc.coordinates[0]),
                   lng: Number(loc.coordinates[1])
                 },
+                city: loc.city,
                 rating: loc.rating || 4.5,
                 reviews: loc.reviews || 1000,
                 description: loc.description || ''

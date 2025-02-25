@@ -54,9 +54,9 @@ async function resizeImage(file: File): Promise<Blob> {
           }
           resolve(blob);
         },
-        'image/jpeg',
-        JPEG_QUALITY
-      );
+        'image/jpeg', // Using JPEG format
+        JPEG_QUALITY // Using lower quality for smaller size
+      );      
     };
     
     img.onerror = (e) => {
@@ -135,9 +135,7 @@ function parseCoordinates(coordinates: string): [number, number] | null {
   }
 }
 
-//const API_URL = '/api/chat';
-const API_URL = import.meta.env.VITE_API_URL + '/api/chat';  // Use the env variable
-
+const API_URL = '/api/chat';
 
 export async function processLocationImages(images: File[]): Promise<Location[]> {
   console.log(`[Image Processing] Processing ${images.length} images`);
@@ -174,9 +172,7 @@ export async function processLocationImages(images: File[]): Promise<Location[]>
 
       const response = await fetch(API_URL, {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: [{
             role: 'user',
