@@ -17,8 +17,10 @@ export function useInviteCode() {
     setError(null);
 
     try {
-      console.log('Sending code:', code);
-      console.log('To URL:', `${API_URL}/api/validate-invite`);
+      console.log('[InviteCode] Starting validation:', {
+        code,
+        apiUrl: API_URL
+      });
 
       const response = await fetch(`${API_URL}/api/validate-invite`, {
         method: 'POST',
@@ -26,10 +28,18 @@ export function useInviteCode() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ code: code.trim() }),
+        credentials: 'include',
         mode: 'cors'
       });
 
+      console.log('[InviteCode] Response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+
       const data = await response.json();
+      console.log('[InviteCode] Response data:', data);
 
       if (!response.ok) {
         throw new Error(data.message || 'Failed to validate code');
@@ -39,11 +49,13 @@ export function useInviteCode() {
         throw new Error('No session token received');
       }
 
+      console.log('[InviteCode] Validation successful');
       return {
         success: true,
         sessionToken: data.sessionToken
       };
     } catch (err) {
+      console.error('[InviteCode] Error:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to validate code';
       setError(errorMessage);
       return {
@@ -61,6 +73,8 @@ export function useInviteCode() {
     error
   };
 }
+
+
 /* import { useState } from 'react';
 
 const API_URL = import.meta.env.VITE_API_URL;

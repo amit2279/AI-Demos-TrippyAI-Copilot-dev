@@ -3,13 +3,39 @@ import crypto from 'crypto';
 import cors from 'cors';
 import type { CorsOptions, CorsRequest } from 'cors';
 
-// Initialize CORS middleware
+// Initialize CORS middleware with logging
 const corsOptions: CorsOptions = {
-  origin: [
-    'http://localhost:5173',
-    'https://ai-demo-trippy.vercel.app',
-    /https:\/\/ai-demo-trippy-.*-amits-projects-04ce3c09\.vercel\.app/
-  ],
+  origin: (origin, callback) => {
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'https://ai-demo-trippy.vercel.app',
+      /https:\/\/ai-demo-trippy-.*-amits-projects-04ce3c09\.vercel\.app/
+    ];
+
+    console.log('[CORS] Request origin:', origin);
+    console.log('[CORS] Allowed origins:', allowedOrigins);
+
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) {
+      console.log('[CORS] Allowing request with no origin');
+      return callback(null, true);
+    }
+
+    const isAllowed = allowedOrigins.some(allowed => 
+      typeof allowed === 'string' 
+        ? allowed === origin
+        : allowed.test(origin)
+    );
+
+    console.log('[CORS] Is origin allowed:', isAllowed);
+
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      console.log('[CORS] Blocking request from origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   methods: ['POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type'],
   credentials: true
@@ -24,6 +50,7 @@ function runMiddleware(
   return new Promise((resolve, reject) => {
     fn(req as CorsRequest, res, (result: any) => {
       if (result instanceof Error) {
+        console.error('[Middleware] Error:', result);
         return reject(result);
       }
       return resolve();
@@ -35,18 +62,28 @@ export default async function handler(
   req: Request,
   res: Response
 ) {
-  // Run the CORS middleware
-  await runMiddleware(req, res, cors(corsOptions));
-
-  if (req.method !== 'POST') {
-    res.status(405).json({ error: 'Method not allowed' });
-    return;
-  }
+  console.log('[API] Received request:', {
+    method: req.method,
+    headers: req.headers,
+    body: req.body
+  });
 
   try {
+    // Run the CORS middleware
+    console.log('[API] Running CORS middleware');
+    await runMiddleware(req, res, cors(corsOptions));
+
+    if (req.method !== 'POST') {
+      console.log('[API] Method not allowed:', req.method);
+      res.status(405).json({ error: 'Method not allowed' });
+      return;
+    }
+
     const { code } = req.body;
+    console.log('[API] Received invite code:', code);
 
     if (!code || typeof code !== 'string') {
+      console.log('[API] Invalid code format:', code);
       res.status(400).json({ error: 'Invalid invite code format' });
       return;
     }
@@ -55,8 +92,14 @@ export default async function handler(
     const validCodes = process.env.INVITE_CODES?.split(',').map(code => code.trim()) || [];
     const salt = process.env.INVITE_CODE_SALT;
 
+    console.log('[API] Environment check:', {
+      hasValidCodes: !!validCodes.length,
+      hasSalt: !!salt,
+      codesCount: validCodes.length
+    });
+
     if (!validCodes.length || !salt) {
-      console.error('Missing INVITE_CODES or INVITE_CODE_SALT in environment');
+      console.error('[API] Missing environment variables');
       return res.status(500).json({
         success: false,
         message: 'Server configuration error'
@@ -64,20 +107,27 @@ export default async function handler(
     }
 
     // Hash the received code with salt
+    const processedCode = code.toLowerCase().trim();
     const hashedCode = crypto
       .createHash('sha256')
-      .update(code.toLowerCase().trim() + salt)
+      .update(processedCode + salt)
       .digest('hex');
 
-    console.log('Validation attempt:', {
-      code: code.toLowerCase().trim(),
-      hashedCode,
-      isValid: validCodes.includes(hashedCode)
+    console.log('[API] Code processing:', {
+      original: code,
+      processed: processedCode,
+      hashed: hashedCode
     });
 
-    if (validCodes.includes(hashedCode)) {
-      // Generate session token
+    const isValid = validCodes.includes(hashedCode);
+    console.log('[API] Validation result:', {
+      isValid,
+      matchedHash: isValid ? hashedCode : 'none'
+    });
+
+    if (isValid) {
       const sessionToken = crypto.randomBytes(32).toString('hex');
+      console.log('[API] Generated session token');
       
       return res.json({ 
         success: true, 
@@ -85,12 +135,13 @@ export default async function handler(
       });
     }
 
+    console.log('[API] Invalid code, sending 401');
     return res.status(401).json({ 
       success: false, 
       message: 'Invalid invite code' 
     });
   } catch (error) {
-    console.error('Error validating invite code:', error);
+    console.error('[API] Error:', error);
     return res.status(500).json({
       success: false,
       message: 'Error validating code'
