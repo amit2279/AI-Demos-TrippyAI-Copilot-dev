@@ -1,3 +1,121 @@
+import express from 'express';
+import { Anthropic } from '@anthropic-ai/sdk';
+import { CLAUDE_API_KEY } from './src/config';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import { validateInviteRoute } from './validate-invite';
+
+dotenv.config();
+
+const app = express();
+
+// Validate API key immediately
+if (!CLAUDE_API_KEY && !process.env.CLAUDE_API_KEY) {
+  throw new Error('Missing CLAUDE_API_KEY environment variable');
+}
+
+const anthropic = new Anthropic({
+  apiKey: CLAUDE_API_KEY || process.env.CLAUDE_API_KEY
+});
+
+// Import the validateInviteRoute
+
+// Use the route
+app.use('/api', validateInviteRoute);
+
+// CORS configuration
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://ai-demo-trippy-3oh6mos91-amits-projects-04ce3c09.vercel.app', // Add your exact Vercel domain
+  'https://ai-demo-trippy-ai.vercel.app',
+  /\.vercel\.app$/ // Allows all vercel.app subdomains
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
+
+// Then your existing middleware
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Add the invite code validation endpoint
+app.post('/api/validate-invite', (req, res) => {
+  const { code } = req.body;
+  
+  if (!code) {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Invite code is required' 
+    });
+  }
+
+  try {
+    const validCodes = process.env.INVITE_CODES?.split(',').map(c => c.trim()) || [];
+    const salt = process.env.INVITE_CODE_SALT;
+
+    if (!validCodes.length || !salt) {
+      console.error('Missing INVITE_CODES or INVITE_CODE_SALT in environment');
+      return res.status(500).json({
+        success: false,
+        message: 'Server configuration error'
+      });
+    }
+
+    // Hash the received code with salt
+    const hashedCode = crypto
+      .createHash('sha256')
+      .update(code.toLowerCase().trim() + salt)
+      .digest('hex');
+      
+    console.log('Validation attempt:', {
+      receivedCode: code,
+      processedCode: code.toLowerCase().trim(),
+      generatedHash: hashedCode,
+      validCodesCount: validCodes.length,
+      isValid: validCodes.includes(hashedCode)
+    });
+
+    if (validCodes.includes(hashedCode)) {
+      const sessionToken = crypto.randomBytes(32).toString('hex');
+      return res.json({ 
+        success: true, 
+        sessionToken
+      });
+    }
+
+    return res.status(401).json({ 
+      success: false, 
+      message: 'Invalid invite code' 
+    });
+  } catch (error) {
+    console.error('Error validating invite code:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error validating code'
+    });
+  }
+});
+
+const port = process.env.PORT || 3002;
+app.listen(port, () => {
+  console.log(`[Server] Running on port ${port}`);
+  console.log('[Server] Environment:', process.env.NODE_ENV);
+  console.log('[Server] API key configured:', !!anthropic.apiKey);
+});
+
 /* import express from 'express';
 import { Anthropic } from '@anthropic-ai/sdk';
 import { CLAUDE_API_KEY } from './src/config';
@@ -136,130 +254,6 @@ const anthropic = new Anthropic({
   apiKey: CLAUDE_API_KEY || process.env.CLAUDE_API_KEY
 });
  */
-
-
-import express from 'express';
-import { Anthropic } from '@anthropic-ai/sdk';
-import { CLAUDE_API_KEY } from './src/config';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import { validateInviteRoute } from './validate-invite';
-
-dotenv.config();
-
-const app = express();
-
-// Validate API key immediately
-if (!CLAUDE_API_KEY && !process.env.CLAUDE_API_KEY) {
-  throw new Error('Missing CLAUDE_API_KEY environment variable');
-}
-
-const anthropic = new Anthropic({
-  apiKey: CLAUDE_API_KEY || process.env.CLAUDE_API_KEY
-});
-
-// Import the validateInviteRoute
-
-// Use the route
-app.use('/api', validateInviteRoute);
-
-// CORS first
-app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'https://ai-demo-trippy-bl88xac01-amits-projects-04ce3c09.vercel.app',
-    // You can also use a wildcard for all vercel.app subdomains
-    /\.vercel\.app$/
-  ],
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-}));
-
-// Add this right after the existing CORS middleware
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  
-  // If request is from a Vercel domain, add the proper CORS headers
-  if (origin && origin.includes('vercel.app')) {
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization');
-    res.header('Access-Control-Allow-Credentials', 'true');
-  }
-  
-  next();
-});
-
-// Then your existing middleware
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
-
-// Add this endpoint alongside your other routes
-app.post('/api/validate-invite', (req, res) => {
-  const { code } = req.body;
-  
-  if (!code) {
-    return res.status(400).json({ 
-      success: false, 
-      message: 'Invite code is required' 
-    });
-  }
-
-  try {
-    const validCodes = process.env.INVITE_CODES?.split(',').map(c => c.trim()) || [];
-    const salt = process.env.INVITE_CODE_SALT;
-
-    if (!validCodes.length || !salt) {
-      console.error('Missing INVITE_CODES or INVITE_CODE_SALT in environment');
-      return res.status(500).json({
-        success: false,
-        message: 'Server configuration error'
-      });
-    }
-
-    // Hash the received code with salt - using same transformation as generate script
-    const hashedCode = crypto
-      .createHash('sha256')
-      .update(code.toLowerCase().trim() + salt)
-      .digest('hex');
-      
-    console.log('Validation attempt:', {
-      receivedCode: code,
-      processedCode: code.toLowerCase().trim(),
-      generatedHash: hashedCode,
-      validCodesCount: validCodes.length,
-      isValid: validCodes.includes(hashedCode)
-    });
-
-    if (validCodes.includes(hashedCode)) {
-      const sessionToken = crypto.randomBytes(32).toString('hex');
-      return res.json({ 
-        success: true, 
-        sessionToken
-      });
-    }
-
-    return res.status(401).json({ 
-      success: false, 
-      message: 'Invalid invite code' 
-    });
-  } catch (error) {
-    console.error('Error validating invite code:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Error validating code'
-    });
-  }
-});
-
-const port = process.env.PORT || 3002;
-app.listen(port, () => {
-  console.log(`[Server] Running on port ${port}`);
-  console.log('[Server] Environment:', process.env.NODE_ENV);
-  console.log('[Server] API key configured:', !!anthropic.apiKey);
-});
-
 
 /* 
 ---- latest --------
