@@ -18,37 +18,35 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
   const timeoutRef = useRef<NodeJS.Timeout>();
   const lastLocationRef = useRef<string | null>(null);
   const locationsRef = useRef<string | null>(null);
+  const isInitialMount = useRef(true);
 
   // Handle location selection
   useEffect(() => {
-    if (!selectedLocation || isAnimating) return;
+    if (!selectedLocation) return;
 
-    // Prevent duplicate animations for same location
+    // Skip the initial mount
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    // Only proceed if we have a location and it's from a click
     const locationKey = `${selectedLocation.position.lat},${selectedLocation.position.lng}`;
     if (locationKey === lastLocationRef.current) return;
     lastLocationRef.current = locationKey;
 
     // Extract city name from location
     const cityName = selectedLocation.city || extractCityName(selectedLocation.name);
-    
-    // Update city context
-    console.log('[MapUpdater] Setting city context:', cityName);
     cityContext.setCurrentCity(cityName);
 
-    console.log('[MapUpdater] Flying to selected location:', {
-      name: selectedLocation.name,
-      city: cityName,
-      coordinates: [selectedLocation.position.lat, selectedLocation.position.lng]
-    });
-    
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
-
     setIsAnimating(true);
-    
     try {
       setTimeout(() => {
+        //if (selectedLocation.imageUrl == "default")
+        console.log('[MapUpdater] flyTo default location ---------- 0 ');
         map.flyTo(
           [selectedLocation.position.lat, selectedLocation.position.lng],
           15,
@@ -77,7 +75,7 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
 
   // Handle locations update
   useEffect(() => {
-    if (locations.length === 0) return;
+    if (locations.length === 0 || selectedLocation) return; //|| isAnimating
 
     const locationsKey = JSON.stringify(locations.map(loc => loc.id));
     if (locationsKey === locationsRef.current) return;
