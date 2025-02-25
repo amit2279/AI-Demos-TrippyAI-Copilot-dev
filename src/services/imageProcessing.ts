@@ -257,6 +257,7 @@ export async function processLocationImages(images: File[]): Promise<Location[]>
         rating: 4.5,
         reviews: Math.floor(Math.random() * 40000) + 10000
       });
+      //imageUrl: base64Image,
     } catch (error) {
       console.error(`[Image Processing] Error:`, error);
     } finally {

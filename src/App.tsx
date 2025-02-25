@@ -22,7 +22,7 @@ import { AuthOverlay } from './components/Auth/AuthOverlay';
 import * as Sentry from "@sentry/react";
 //import posthog from 'posthog-js';
 // src/pages/_app.tsx
-import type { AppProps } from 'next/app'
+//import type { AppProps } from 'next/app'
 
 
 /* // Initialize analytics
@@ -99,6 +99,10 @@ export default function App() {
   }, []);
 
 
+  console.log('[App.tsx] -- selectedLocation ----- ', selectedLocation);
+
+
+
 /*   // Handle successful authentication
   const handleAuthSuccess = useCallback(() => {
     localStorage.setItem('sessionToken', 'authenticated');
@@ -114,19 +118,17 @@ export default function App() {
   }, []); */
 
   // Update the success handler
-  const handleAuthSuccess = useCallback((sessionToken: string) => {
+/*   const handleAuthSuccess = useCallback((sessionToken: string) => {
     localStorage.setItem('sessionToken', sessionToken);
     setIsAuthenticated(true);
     //posthog.capture('user_authenticated');
-  }, []);
-
-
+  }, []); */
 
   // Add a logout function if needed
-  const handleLogout = useCallback(() => {
+/*   const handleLogout = useCallback(() => {
     localStorage.removeItem('sessionToken');
     setIsAuthenticated(false);
-  }, []);
+  }, []); */
 
   const handleLocationsUpdate = useCallback((newLocations: Location[]) => {
     console.log('[App] Updating locations:', newLocations);
