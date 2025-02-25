@@ -1,55 +1,11 @@
-import type { Request, Response } from 'express';
-import crypto from 'crypto';
-import cors from 'cors';
-import type { CorsOptions, CorsRequest } from 'cors';
 import express from 'express';
-
-
+import cors from 'cors';
+import crypto from 'crypto';
 
 const app = express();
 
-// CORS configuration
+// Use the same CORS configuration as chat.ts
 const corsOptions = {
-  origin: [
-    'http://localhost:5173', // Local development
-    'https://ai-demo-trippy.vercel.app', // Main deployment
-    /https:\/\/ai-demo-trippy-.*-amits-projects-04ce3c09\.vercel\.app/ // All subdomains
-  ],
-  methods: ['POST', 'OPTIONS'], // Allow POST and OPTIONS requests
-  allowedHeaders: ['Content-Type'], // Allow Content-Type header
-  credentials: true // Allow credentials (if needed)
-};
-
-// Apply CORS middleware
-app.use(cors(corsOptions));
-
-// Handle OPTIONS preflight request
-app.options('/api/validate-invite', cors(corsOptions), (req, res) => {
-  res.status(204).end(); // Respond with 204 No Content
-});
-
-// Your POST endpoint
-app.post('/api/validate-invite', (req, res) => {
-  // Your validation logic here
-  res.json({ success: true });
-});
-
-const port = process.env.PORT || 3002;
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
-
-//app.use(cors(corsOptions));
-
-/* app.options('/api/validate-invite', cors(corsOptions), (req, res) => {
-  res.status(204).end();
-});
- */
-
-
-
-
-/* const corsOptions: CorsOptions = {
   origin: [
     'http://localhost:5173',
     'https://ai-demo-trippy.vercel.app',
@@ -60,137 +16,31 @@ app.listen(port, () => {
   credentials: true
 };
 
-// Use the CORS middleware
-app.use(cors(corsOptions)); */
-
-/* const app = express();
-
-// Initialize CORS middleware with logging
-const corsOptions: CorsOptions = {
-  origin: (origin, callback) => {
-    const allowedOrigins = [
-      'http://localhost:5173',
-      'https://ai-demo-trippy.vercel.app',
-      /https:\/\/ai-demo-trippy-.*-amits-projects-04ce3c09\.vercel\.app/
-    ];
-
-    console.log('[CORS] Request origin:', origin);
-    console.log('[CORS] Allowed origins:', allowedOrigins);
-
-    // Allow requests with no origin (like mobile apps or curl)
-    if (!origin) {
-      console.log('[CORS] Allowing request with no origin');
-      return callback(null, true);
-    }
-
-    const isAllowed = allowedOrigins.some(allowed => 
-      typeof allowed === 'string' 
-        ? allowed === origin
-        : allowed.test(origin)
-    );
-
-    console.log('[CORS] Is origin allowed:', isAllowed);
-
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      console.log('[CORS] Blocking request from origin:', origin);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  methods: ['POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type'],
-  credentials: true
-};
-
+// Apply CORS middleware
 app.use(cors(corsOptions));
 
-app.options('/api/validate-invite', cors(corsOptions), (req, res) => {
+// Handle OPTIONS preflight request
+app.options('/api/validate-invite', cors(corsOptions), (_req, res) => {
   res.status(204).end();
 });
 
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  
-  if (origin && Array.isArray(corsOptions.origin) && corsOptions.origin.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type');
-    res.header('Access-Control-Allow-Credentials', 'true');
-  }
-  
-  next();
-});
-
+// Validate invite code endpoint
 app.post('/api/validate-invite', (req, res) => {
-  // Your validation logic here
-  res.json({ success: true });
-});
+  const { code } = req.body;
 
-const port = process.env.PORT || 3002;
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-}); */
-
-// Wrapper for using CORS with API routes
-function runMiddleware(
-  req: Request,
-  res: Response,
-  fn: (req: CorsRequest, res: Response, callback: (err: any) => void) => void
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    fn(req as CorsRequest, res, (result: any) => {
-      if (result instanceof Error) {
-        console.error('[Middleware] Error:', result);
-        return reject(result);
-      }
-      return resolve();
+  if (!code) {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Invite code is required' 
     });
-  });
-}
-
-export default async function handler(
-  req: Request,
-  res: Response
-) {
-  console.log('[API] Received request:', {
-    method: req.method,
-    headers: req.headers,
-    body: req.body
-  });
+  }
 
   try {
-    // Run the CORS middleware
-    console.log('[API] Running CORS middleware');
-    await runMiddleware(req, res, cors(corsOptions));
-
-    if (req.method !== 'POST') {
-      console.log('[API] Method not allowed:', req.method);
-      res.status(405).json({ error: 'Method not allowed' });
-      return;
-    }
-
-    const { code } = req.body;
-    console.log('[API] Received invite code:', code);
-
-    if (!code || typeof code !== 'string') {
-      console.log('[API] Invalid code format:', code);
-      res.status(400).json({ error: 'Invalid invite code format' });
-      return;
-    }
-
-    // Get valid invite codes from env
-    const validCodes = process.env.INVITE_CODES?.split(',').map(code => code.trim()) || [];
+    const validCodes = process.env.INVITE_CODES?.split(',').map(c => c.trim()) || [];
     const salt = process.env.INVITE_CODE_SALT;
 
-    console.log('[API] Environment check:', {
-      hasValidCodes: !!validCodes.length,
-      hasSalt: !!salt,
-      codesCount: validCodes.length
-    });
-
     if (!validCodes.length || !salt) {
-      console.error('[API] Missing environment variables');
+      console.error('Missing INVITE_CODES or INVITE_CODE_SALT in environment');
       return res.status(500).json({
         success: false,
         message: 'Server configuration error'
@@ -198,47 +48,36 @@ export default async function handler(
     }
 
     // Hash the received code with salt
-    const processedCode = code.toLowerCase().trim();
     const hashedCode = crypto
       .createHash('sha256')
-      .update(processedCode + salt)
+      .update(code.toLowerCase().trim() + salt)
       .digest('hex');
 
-    console.log('[API] Code processing:', {
-      original: code,
-      processed: processedCode,
-      hashed: hashedCode
-    });
-
-    const isValid = validCodes.includes(hashedCode);
-    console.log('[API] Validation result:', {
-      isValid,
-      matchedHash: isValid ? hashedCode : 'none'
-    });
-
-    if (isValid) {
+    if (validCodes.includes(hashedCode)) {
       const sessionToken = crypto.randomBytes(32).toString('hex');
-      console.log('[API] Generated session token');
-      
       return res.json({ 
         success: true, 
         sessionToken
       });
     }
 
-    console.log('[API] Invalid code, sending 401');
     return res.status(401).json({ 
       success: false, 
       message: 'Invalid invite code' 
     });
   } catch (error) {
-    console.error('[API] Error:', error);
+    console.error('Error validating invite code:', error);
     return res.status(500).json({
       success: false,
       message: 'Error validating code'
     });
   }
-}
+});
+
+const port = process.env.PORT || 3002;
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
 
 /* import crypto from 'crypto';
 import express from 'express';
