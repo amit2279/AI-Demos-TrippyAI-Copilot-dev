@@ -168,6 +168,34 @@ app.use(cors({
   credentials: true
 }));
 
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'https://ai-demo-trippy-bl88xac01-amits-projects-04ce3c09.vercel.app',
+    // You can also use a wildcard for all vercel.app subdomains
+    // /\.vercel\.app$/
+  ],
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
+
+
+// Add this right after the existing CORS middleware
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  
+  // If request is from a Vercel domain, add the proper CORS headers
+  if (origin && origin.includes('vercel.app')) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+    res.header('Access-Control-Allow-Credentials', 'true');
+  }
+  
+  next();
+});
+
 // Then your existing middleware
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
