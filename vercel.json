@@ -6,6 +6,10 @@
       "maxDuration": 60
     }
   },
+  "rewrites": [
+    { "source": "/api/validate-invite", "destination": "/api/validate-invite" },
+    { "source": "/api/chat", "destination": "/api/chat" }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",
@@ -15,13 +19,6 @@
         { "key": "Access-Control-Allow-Methods", "value": "GET,POST,OPTIONS" },
         { "key": "Access-Control-Allow-Headers", "value": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version" }
       ]
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/validate-invite",
-      "methods": ["POST", "OPTIONS"],
-      "dest": "/api/validate-invite"
     }
   ]
 }
