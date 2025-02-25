@@ -11,28 +11,56 @@ const RATE_LIMIT_MAX_ATTEMPTS = 5;
 
 export const validateInviteRoute = express.Router();
 
-// Initialize CORS middleware with same options as chat.ts
+// Initialize CORS middleware with detailed logging
 const corsOptions: CorsOptions = {
   origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps)
-    if (!origin) return callback(null, true);
+    console.log('[CORS Debug] Request origin:', origin);
     
-    // Allow all Vercel domains or localhost
+    // Allow requests with no origin (like mobile apps)
+    if (!origin) {
+      console.log('[CORS Debug] Allowing request with no origin');
+      return callback(null, true);
+    }
+    
+    // Allow all origins for now to debug the issue
+    console.log('[CORS Debug] Allowing all origins during debugging');
+    callback(null, true);
+    
+    /* Original restrictive logic - commented out for debugging
     if (
       origin.includes('vercel.app') || 
       origin.includes('localhost') ||
       origin === 'https://ai-demo-trippy.vercel.app'
     ) {
+      console.log('[CORS Debug] Origin allowed:', origin);
       callback(null, true);
     } else {
-      console.warn(`CORS blocked origin: ${origin}`);
+      console.warn(`[CORS Debug] Origin blocked:`, origin);
       callback(new Error('Not allowed by CORS'));
     }
+    */
   },
-  methods: ['POST', 'OPTIONS'],
+  methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 };
+
+// Middleware function to add CORS headers manually
+function addCorsHeaders(req: Request, res: Response, next: Function) {
+  console.log('[CORS Manual] Adding CORS headers for all origins');
+  
+  // Add CORS headers directly
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
+  if (req.method === 'OPTIONS') {
+    console.log('[CORS Manual] Handling OPTIONS preflight request');
+    return res.status(204).end();
+  }
+  
+  next();
+}
 
 // Wrapper for using CORS with API routes
 function runMiddleware(
@@ -41,63 +69,104 @@ function runMiddleware(
   fn: (req: CorsRequest, res: Response, callback: (err: any) => void) => void
 ): Promise<void> {
   return new Promise((resolve, reject) => {
+    console.log('[CORS Middleware] Starting CORS middleware');
     fn(req as CorsRequest, res, (result: any) => {
       if (result instanceof Error) {
+        console.error('[CORS Middleware] Error:', result);
         return reject(result);
       }
+      console.log('[CORS Middleware] CORS middleware successful');
       return resolve();
     });
   });
 }
 
-// Handle preflight OPTIONS request
+// Use both approaches for maximum compatibility
+validateInviteRoute.use('/validate-invite', addCorsHeaders);
+
+// Handle preflight OPTIONS request explicitly
 validateInviteRoute.options('/validate-invite', async (req: Request, res: Response) => {
-  await runMiddleware(req, res, cors(corsOptions));
-  res.status(204).end();
+  console.log('[OPTIONS] Received OPTIONS request');
+  
+  try {
+    // Apply CORS middleware
+    await runMiddleware(req, res, cors(corsOptions));
+    console.log('[OPTIONS] CORS middleware applied successfully');
+    
+    // Ensure proper headers are set
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    
+    res.status(204).end();
+    console.log('[OPTIONS] OPTIONS request handled successfully');
+  } catch (error) {
+    console.error('[OPTIONS] Error handling OPTIONS request:', error);
+    res.status(500).end();
+  }
 });
 
 validateInviteRoute.post('/validate-invite', async (req: Request, res: Response) => {
-  // Apply CORS middleware first
-  await runMiddleware(req, res, cors(corsOptions));
+  console.log('[Invite] Starting validate-invite POST handler');
+  console.log('[Invite] Request headers:', req.headers);
   
-  const clientIP = req.ip;
-  const now = Date.now();
-  const rateLimit = rateLimitMap.get(clientIP);
-
-  // Rate limiting check
-  if (rateLimit) {
-    if (now - rateLimit.timestamp < RATE_LIMIT_WINDOW_MS) {
-      if (rateLimit.attempts >= RATE_LIMIT_MAX_ATTEMPTS) {
-        return res.status(429).json({
-          success: false,
-          message: 'Too many attempts. Please try again later.'
-        });
-      }
-      rateLimit.attempts++;
-    } else {
-      rateLimit.attempts = 1;
-      rateLimit.timestamp = now;
-    }
-  } else {
-    rateLimitMap.set(clientIP, { attempts: 1, timestamp: now });
-  }
-
-  const { code } = req.body;
-
-  if (!code || typeof code !== 'string') {
-    return res.status(400).json({ 
-      success: false, 
-      message: 'Invalid invite code format' 
-    });
-  }
-
   try {
+    // Apply CORS middleware first
+    console.log('[Invite] Applying CORS middleware');
+    await runMiddleware(req, res, cors(corsOptions));
+    console.log('[Invite] CORS middleware applied');
+    
+    // Ensure proper headers are set again
+    res.header('Access-Control-Allow-Origin', '*');
+    
+    const clientIP = req.ip;
+    console.log('[Invite] Client IP:', clientIP);
+    
+    const now = Date.now();
+    const rateLimit = rateLimitMap.get(clientIP);
+
+    // Rate limiting check
+    if (rateLimit) {
+      if (now - rateLimit.timestamp < RATE_LIMIT_WINDOW_MS) {
+        if (rateLimit.attempts >= RATE_LIMIT_MAX_ATTEMPTS) {
+          console.log('[Invite] Rate limit exceeded for IP:', clientIP);
+          return res.status(429).json({
+            success: false,
+            message: 'Too many attempts. Please try again later.'
+          });
+        }
+        rateLimit.attempts++;
+      } else {
+        rateLimit.attempts = 1;
+        rateLimit.timestamp = now;
+      }
+    } else {
+      rateLimitMap.set(clientIP, { attempts: 1, timestamp: now });
+    }
+
+    console.log('[Invite] Request body:', req.body);
+    const { code } = req.body;
+
+    if (!code || typeof code !== 'string') {
+      console.log('[Invite] Invalid code format');
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid invite code format' 
+      });
+    }
+
     // Get valid invite codes from env
     const validCodes = process.env.INVITE_CODES?.split(',').map(c => c.trim()) || [];
     const salt = process.env.INVITE_CODE_SALT;
 
+    console.log('[Invite] Environment check:', {
+      hasValidCodes: validCodes.length > 0,
+      validCodesCount: validCodes.length,
+      hasSalt: !!salt
+    });
+
     if (!validCodes.length || !salt) {
-      console.error('Missing INVITE_CODES or INVITE_CODE_SALT in environment');
+      console.error('[Invite] Missing environment variables');
       return res.status(500).json({
         success: false,
         message: 'Server configuration error'
@@ -110,13 +179,15 @@ validateInviteRoute.post('/validate-invite', async (req: Request, res: Response)
       .update(code.toLowerCase().trim() + salt)
       .digest('hex');
 
-    console.log('Validation attempt:', {
+    console.log('[Invite] Validation attempt:', {
       code: code.toLowerCase().trim(),
       hashedCode,
+      validCodesFirstChars: validCodes.map(c => c.substring(0, 8) + '...'),
       isValid: validCodes.includes(hashedCode)
     });
 
     if (validCodes.includes(hashedCode)) {
+      console.log('[Invite] Valid code, generating token');
       // Generate session token
       const sessionToken = crypto.randomBytes(32).toString('hex');
       
@@ -126,12 +197,13 @@ validateInviteRoute.post('/validate-invite', async (req: Request, res: Response)
       });
     }
 
+    console.log('[Invite] Invalid code');
     return res.status(401).json({ 
       success: false, 
       message: 'Invalid invite code' 
     });
   } catch (error) {
-    console.error('Error validating invite code:', error);
+    console.error('[Invite] Error:', error);
     return res.status(500).json({
       success: false,
       message: 'Error validating code'
