@@ -2,6 +2,68 @@ import type { Request, Response } from 'express';
 import crypto from 'crypto';
 import cors from 'cors';
 import type { CorsOptions, CorsRequest } from 'cors';
+import express from 'express';
+
+
+
+const app = express();
+
+// CORS configuration
+const corsOptions = {
+  origin: [
+    'http://localhost:5173', // Local development
+    'https://ai-demo-trippy.vercel.app', // Main deployment
+    /https:\/\/ai-demo-trippy-.*-amits-projects-04ce3c09\.vercel\.app/ // All subdomains
+  ],
+  methods: ['POST', 'OPTIONS'], // Allow POST and OPTIONS requests
+  allowedHeaders: ['Content-Type'], // Allow Content-Type header
+  credentials: true // Allow credentials (if needed)
+};
+
+// Apply CORS middleware
+app.use(cors(corsOptions));
+
+// Handle OPTIONS preflight request
+app.options('/api/validate-invite', cors(corsOptions), (req, res) => {
+  res.status(204).end(); // Respond with 204 No Content
+});
+
+// Your POST endpoint
+app.post('/api/validate-invite', (req, res) => {
+  // Your validation logic here
+  res.json({ success: true });
+});
+
+const port = process.env.PORT || 3002;
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
+
+//app.use(cors(corsOptions));
+
+/* app.options('/api/validate-invite', cors(corsOptions), (req, res) => {
+  res.status(204).end();
+});
+ */
+
+
+
+
+/* const corsOptions: CorsOptions = {
+  origin: [
+    'http://localhost:5173',
+    'https://ai-demo-trippy.vercel.app',
+    /https:\/\/ai-demo-trippy-.*-amits-projects-04ce3c09\.vercel\.app/
+  ],
+  methods: ['POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'],
+  credentials: true
+};
+
+// Use the CORS middleware
+app.use(cors(corsOptions)); */
+
+/* const app = express();
 
 // Initialize CORS middleware with logging
 const corsOptions: CorsOptions = {
@@ -40,6 +102,35 @@ const corsOptions: CorsOptions = {
   allowedHeaders: ['Content-Type'],
   credentials: true
 };
+
+app.use(cors(corsOptions));
+
+app.options('/api/validate-invite', cors(corsOptions), (req, res) => {
+  res.status(204).end();
+});
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  
+  if (origin && Array.isArray(corsOptions.origin) && corsOptions.origin.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    res.header('Access-Control-Allow-Credentials', 'true');
+  }
+  
+  next();
+});
+
+app.post('/api/validate-invite', (req, res) => {
+  // Your validation logic here
+  res.json({ success: true });
+});
+
+const port = process.env.PORT || 3002;
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+}); */
 
 // Wrapper for using CORS with API routes
 function runMiddleware(
