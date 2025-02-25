@@ -1,4 +1,104 @@
+import type { Request, Response } from 'express';
 import crypto from 'crypto';
+import cors from 'cors';
+import type { CorsOptions, CorsRequest } from 'cors';
+
+// Initialize CORS middleware
+const corsOptions: CorsOptions = {
+  origin: [
+    'http://localhost:5173',
+    'https://ai-demo-trippy.vercel.app',
+    /https:\/\/ai-demo-trippy-.*-amits-projects-04ce3c09\.vercel\.app/
+  ],
+  methods: ['POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'],
+  credentials: true
+};
+
+// Wrapper for using CORS with API routes
+function runMiddleware(
+  req: Request,
+  res: Response,
+  fn: (req: CorsRequest, res: Response, callback: (err: any) => void) => void
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    fn(req as CorsRequest, res, (result: any) => {
+      if (result instanceof Error) {
+        return reject(result);
+      }
+      return resolve();
+    });
+  });
+}
+
+export default async function handler(
+  req: Request,
+  res: Response
+) {
+  // Run the CORS middleware
+  await runMiddleware(req, res, cors(corsOptions));
+
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+
+  try {
+    const { code } = req.body;
+
+    if (!code || typeof code !== 'string') {
+      res.status(400).json({ error: 'Invalid invite code format' });
+      return;
+    }
+
+    // Get valid invite codes from env
+    const validCodes = process.env.INVITE_CODES?.split(',').map(code => code.trim()) || [];
+    const salt = process.env.INVITE_CODE_SALT;
+
+    if (!validCodes.length || !salt) {
+      console.error('Missing INVITE_CODES or INVITE_CODE_SALT in environment');
+      return res.status(500).json({
+        success: false,
+        message: 'Server configuration error'
+      });
+    }
+
+    // Hash the received code with salt
+    const hashedCode = crypto
+      .createHash('sha256')
+      .update(code.toLowerCase().trim() + salt)
+      .digest('hex');
+
+    console.log('Validation attempt:', {
+      code: code.toLowerCase().trim(),
+      hashedCode,
+      isValid: validCodes.includes(hashedCode)
+    });
+
+    if (validCodes.includes(hashedCode)) {
+      // Generate session token
+      const sessionToken = crypto.randomBytes(32).toString('hex');
+      
+      return res.json({ 
+        success: true, 
+        sessionToken
+      });
+    }
+
+    return res.status(401).json({ 
+      success: false, 
+      message: 'Invalid invite code' 
+    });
+  } catch (error) {
+    console.error('Error validating invite code:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error validating code'
+    });
+  }
+}
+
+/* import crypto from 'crypto';
 import express from 'express';
 import cors from 'cors';
 import type { CorsOptions, CorsRequest } from 'cors';
@@ -26,19 +126,6 @@ const corsOptions: CorsOptions = {
     console.log('[CORS Debug] Allowing all origins during debugging');
     callback(null, true);
     
-    /* Original restrictive logic - commented out for debugging
-    if (
-      origin.includes('vercel.app') || 
-      origin.includes('localhost') ||
-      origin === 'https://ai-demo-trippy.vercel.app'
-    ) {
-      console.log('[CORS Debug] Origin allowed:', origin);
-      callback(null, true);
-    } else {
-      console.warn(`[CORS Debug] Origin blocked:`, origin);
-      callback(new Error('Not allowed by CORS'));
-    }
-    */
   },
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -210,6 +297,8 @@ validateInviteRoute.post('/validate-invite', async (req: Request, res: Response)
     });
   }
 });
+
+ */
 
 /* // validate-invite.ts (Express version)
 import crypto from 'crypto';
