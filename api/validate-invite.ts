@@ -1,4 +1,145 @@
-// validate-invite.ts (Express version)
+import crypto from 'crypto';
+import express from 'express';
+import cors from 'cors';
+import type { CorsOptions, CorsRequest } from 'cors';
+import type { Request, Response } from 'express';
+
+// Rate limiting (in-memory - consider using Redis for production)
+const rateLimitMap = new Map<string, { attempts: number; timestamp: number }>();
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const RATE_LIMIT_MAX_ATTEMPTS = 5;
+
+export const validateInviteRoute = express.Router();
+
+// Initialize CORS middleware with same options as chat.ts
+const corsOptions: CorsOptions = {
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps)
+    if (!origin) return callback(null, true);
+    
+    // Allow all Vercel domains or localhost
+    if (
+      origin.includes('vercel.app') || 
+      origin.includes('localhost') ||
+      origin === 'https://ai-demo-trippy.vercel.app'
+    ) {
+      callback(null, true);
+    } else {
+      console.warn(`CORS blocked origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+};
+
+// Wrapper for using CORS with API routes
+function runMiddleware(
+  req: Request,
+  res: Response,
+  fn: (req: CorsRequest, res: Response, callback: (err: any) => void) => void
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    fn(req as CorsRequest, res, (result: any) => {
+      if (result instanceof Error) {
+        return reject(result);
+      }
+      return resolve();
+    });
+  });
+}
+
+// Handle preflight OPTIONS request
+validateInviteRoute.options('/validate-invite', async (req: Request, res: Response) => {
+  await runMiddleware(req, res, cors(corsOptions));
+  res.status(204).end();
+});
+
+validateInviteRoute.post('/validate-invite', async (req: Request, res: Response) => {
+  // Apply CORS middleware first
+  await runMiddleware(req, res, cors(corsOptions));
+  
+  const clientIP = req.ip;
+  const now = Date.now();
+  const rateLimit = rateLimitMap.get(clientIP);
+
+  // Rate limiting check
+  if (rateLimit) {
+    if (now - rateLimit.timestamp < RATE_LIMIT_WINDOW_MS) {
+      if (rateLimit.attempts >= RATE_LIMIT_MAX_ATTEMPTS) {
+        return res.status(429).json({
+          success: false,
+          message: 'Too many attempts. Please try again later.'
+        });
+      }
+      rateLimit.attempts++;
+    } else {
+      rateLimit.attempts = 1;
+      rateLimit.timestamp = now;
+    }
+  } else {
+    rateLimitMap.set(clientIP, { attempts: 1, timestamp: now });
+  }
+
+  const { code } = req.body;
+
+  if (!code || typeof code !== 'string') {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Invalid invite code format' 
+    });
+  }
+
+  try {
+    // Get valid invite codes from env
+    const validCodes = process.env.INVITE_CODES?.split(',').map(c => c.trim()) || [];
+    const salt = process.env.INVITE_CODE_SALT;
+
+    if (!validCodes.length || !salt) {
+      console.error('Missing INVITE_CODES or INVITE_CODE_SALT in environment');
+      return res.status(500).json({
+        success: false,
+        message: 'Server configuration error'
+      });
+    }
+
+    // Hash the received code with salt
+    const hashedCode = crypto
+      .createHash('sha256')
+      .update(code.toLowerCase().trim() + salt)
+      .digest('hex');
+
+    console.log('Validation attempt:', {
+      code: code.toLowerCase().trim(),
+      hashedCode,
+      isValid: validCodes.includes(hashedCode)
+    });
+
+    if (validCodes.includes(hashedCode)) {
+      // Generate session token
+      const sessionToken = crypto.randomBytes(32).toString('hex');
+      
+      return res.json({ 
+        success: true, 
+        sessionToken
+      });
+    }
+
+    return res.status(401).json({ 
+      success: false, 
+      message: 'Invalid invite code' 
+    });
+  } catch (error) {
+    console.error('Error validating invite code:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error validating code'
+    });
+  }
+});
+
+/* // validate-invite.ts (Express version)
 import crypto from 'crypto';
 import express from 'express';
 import cors from 'cors';
@@ -110,7 +251,7 @@ validateInviteRoute.post('/validate-invite', (req, res) => {
     });
   }
 });
-
+ */
 
 
 /* // validate-invite.ts (Express version)
