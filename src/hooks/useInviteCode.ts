@@ -61,12 +61,10 @@ export function useInviteCode() {
   };
 }
  */
-// src/hooks/useInviteCode.ts
+
 import { useState } from 'react';
 
 const API_URL = import.meta.env.VITE_API_URL;
-//const API_URL = import.meta.env.VITE_API_URL + '/api/validate-invite';
-
 
 interface ValidationResponse {
   success: boolean;
@@ -83,19 +81,18 @@ export function useInviteCode() {
     setError(null);
 
     try {
-      console.log('Sending code: --------', code); // Debug log
-      console.log('To URL: ---------', `${API_URL}/api/validate-invite`); // Debug log
+      console.log('Sending code:', code);
+      console.log('To URL:', `${API_URL}/api/validate-invite`);
 
       const response = await fetch(`${API_URL}/api/validate-invite`, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({ code: code.trim() })
-    });
+      });
 
       const data = await response.json();
-      console.log('Response:', data); // Debug log
 
       if (!response.ok) {
         throw new Error(data.message || 'Failed to validate code');
