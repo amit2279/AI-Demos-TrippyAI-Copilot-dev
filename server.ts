@@ -3,7 +3,7 @@ import { Anthropic } from '@anthropic-ai/sdk';
 import { CLAUDE_API_KEY } from './src/config';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { validateInviteRoute } from './validate-invite';
+import { validateInviteRoute } from './api/validate-invite';
 
 dotenv.config();
 
