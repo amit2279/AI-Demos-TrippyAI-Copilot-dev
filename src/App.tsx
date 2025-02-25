@@ -396,10 +396,10 @@ export default function App() {
             )}
       </div>
       {/* Auth Overlay */}
-    <AuthOverlay 
+    {/* <AuthOverlay 
       isAuthenticated={isAuthenticated} 
       onSuccess={handleAuthSuccess}
-    />
+    /> */}
   </div>
   );
 }
