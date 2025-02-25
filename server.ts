@@ -145,6 +145,8 @@ import express from 'express';
 import { Anthropic } from '@anthropic-ai/sdk';
 import { CLAUDE_API_KEY } from './src/config';
 import dotenv from 'dotenv';
+import { validateInviteRoute } from './validate-invite';
+
 
 dotenv.config();
 
@@ -159,6 +161,10 @@ const anthropic = new Anthropic({
   apiKey: CLAUDE_API_KEY || process.env.CLAUDE_API_KEY
 });
 
+// Import the validateInviteRoute
+
+// Use the route
+app.use('/api', validateInviteRoute);
 
 // CORS first
 app.use(cors({
