@@ -1,11 +1,7 @@
 import { ChatMessage } from '../types/chat';
 
 // Use relative path for API endpoint to work with proxy
-//export const API_URL = '/api/chat';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002';
-
-console.log('API_URL ------------ ', API_URL);
+export const API_URL = '/api/chat';
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
@@ -37,18 +33,10 @@ export async function* getStreamingChatResponse(messages: ChatMessage[]) {
         timestamp: new Date().toISOString()
       });
 
-      /* const response = await fetch(API_URL, {
+      const response = await fetch(API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ messages: validMessages })
-      }); */
-
-      const response = await fetch(`${API_URL}/api/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
         },
         body: JSON.stringify({ messages: validMessages })
       });

@@ -11,7 +11,7 @@ export default defineConfig({
       '/api': {
         target: process.env.NODE_ENV === 'production' 
           ? 'https://ai-demo-trippy.vercel.app'
-          : 'http://localhost:3000',
+          : 'http://localhost:3002',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api/, '/api'),

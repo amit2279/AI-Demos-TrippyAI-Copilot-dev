@@ -11,7 +11,7 @@ if (!CLAUDE_API_KEY) {
 }
 
 export const config = {
-  port: process.env.PORT || 3000,
+  port: process.env.PORT || 3002,
   cors: {
     origin: process.env.CORS_ORIGIN || 'http://localhost:5173'
   }
