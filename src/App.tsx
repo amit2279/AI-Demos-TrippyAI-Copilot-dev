@@ -118,11 +118,11 @@ export default function App() {
   }, []); */
 
   // Update the success handler
-/*   const handleAuthSuccess = useCallback((sessionToken: string) => {
+   const handleAuthSuccess = useCallback((sessionToken: string) => {
     localStorage.setItem('sessionToken', sessionToken);
     setIsAuthenticated(true);
     //posthog.capture('user_authenticated');
-  }, []); */
+  }, []);
 
   // Add a logout function if needed
 /*   const handleLogout = useCallback(() => {
@@ -398,10 +398,10 @@ export default function App() {
             )}
       </div>
       {/* Auth Overlay */}
-    {/* <AuthOverlay 
+    { <AuthOverlay 
       isAuthenticated={isAuthenticated} 
       onSuccess={handleAuthSuccess}
-    /> */}
+    /> }
   </div>
   );
 }

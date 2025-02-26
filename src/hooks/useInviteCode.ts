@@ -1,168 +1,59 @@
+// src/hooks/useInviteCode.ts
 import { useState } from 'react';
 
-//const API_URL = import.meta.env.VITE_API_URL;
+// Dynamic API URL based on environment
+const API_URL = import.meta.env.VITE_API_URL 
+  ? '' // Empty string means use relative URL which will work with same-origin deployments
+  : 'http://localhost:3002'; // For local development
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://ai-demo-trippy-ai.vercel.app';
-
-interface ValidationResponse {
-  success: boolean;
-  sessionToken?: string;
-  error?: string;
+interface UseInviteCodeReturn {
+  validateInviteCode: (code: string) => Promise<{
+    success: boolean;
+    error?: string;
+    sessionToken?: string;
+  }>;
+  isLoading: boolean;
+  error: string | null;
 }
 
-export function useInviteCode() {
+export function useInviteCode(): UseInviteCodeReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  /* const validateInviteCode = async (code: string): Promise<ValidationResponse> => {
+  const validateInviteCode = async (code: string) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      console.log('[InviteCode] Starting validation:', {
-        code,
-        apiUrl: API_URL
-      });
-
-      const response = await fetch(`${API_URL}/api/validate-invite`, {
+      console.log('Validating code:', code);
+      
+      // Use the dedicated validation endpoint with proper URL handling
+      const url = `${API_URL}/api/validate-invite`;
+      
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ code: code.trim() }),
-        credentials: 'include',
-        mode: 'cors'
+        body: JSON.stringify({ code }),
       });
 
-      console.log('[InviteCode] Response received:', {
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries())
-      });
-
+      console.log('Response status:', response.status);
+      
       const data = await response.json();
-      console.log('[InviteCode] Response data:', data);
+      console.log('Response data:', data);
 
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to validate code');
+        throw new Error(data.message || data.error || 'Failed to validate invite code');
       }
 
-      if (!data.sessionToken) {
-        throw new Error('No session token received');
-      }
-
-      console.log('[InviteCode] Validation successful');
       return {
-        success: true,
+        success: data.success,
         sessionToken: data.sessionToken
       };
     } catch (err) {
-      console.error('[InviteCode] Error:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to validate code';
-      setError(errorMessage);
-      return {
-        success: false,
-        error: errorMessage
-      };
-    } finally {
-      setIsLoading(false);
-    }
-  }; */
-  const validateInviteCode = async (code: string): Promise<ValidationResponse> => {
-    setIsLoading(true);
-    setError(null);
-  
-    try {
-      const response = await fetch(`${API_URL}/api/validate-invite`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ code: code.trim() }),
-        credentials: 'include', // Include credentials if needed
-        mode: 'cors', // Ensure CORS mode is enabled
-      });
-  
-      const data = await response.json();
-  
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to validate code');
-      }
-  
-      if (!data.sessionToken) {
-        throw new Error('No session token received');
-      }
-  
-      return {
-        success: true,
-        sessionToken: data.sessionToken,
-      };
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to validate code';
-      setError(errorMessage);
-      return {
-        success: false,
-        error: errorMessage,
-      };
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  return {
-    validateInviteCode,
-    isLoading,
-    error
-  };
-}
-
-
-/* import { useState } from 'react';
-
-const API_URL = import.meta.env.VITE_API_URL;
-
-interface ValidationResponse {
-  success: boolean;
-  sessionToken?: string;
-  error?: string;
-}
-
-export function useInviteCode() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const validateInviteCode = async (code: string): Promise<ValidationResponse> => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      console.log('Sending code:', code);
-      console.log('To URL:', `${API_URL}/api/validate-invite`);
-
-      const response = await fetch(`${API_URL}/api/validate-invite`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ code: code.trim() })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to validate code');
-      }
-
-      if (!data.sessionToken) {
-        throw new Error('No session token received');
-      }
-
-      return {
-        success: true,
-        sessionToken: data.sessionToken
-      };
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to validate code';
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+      console.error('Validation error:', errorMessage);
       setError(errorMessage);
       return {
         success: false,
@@ -176,13 +67,80 @@ export function useInviteCode() {
   return {
     validateInviteCode,
     isLoading,
-    error
+    error,
   };
 }
- */
-/* import { useState } from 'react';
 
-const API_URL = import.meta.env.VITE_API_URL;
+
+/* // src/hooks/useInviteCode.ts
+import { useState } from 'react';
+
+const API_URL = 'http://localhost:3002';
+
+interface UseInviteCodeReturn {
+  validateInviteCode: (code: string) => Promise<{
+    success: boolean;
+    error?: string;
+    sessionToken?: string;
+  }>;
+  isLoading: boolean;
+  error: string | null;
+}
+
+export function useInviteCode(): UseInviteCodeReturn {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const validateInviteCode = async (code: string) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      console.log('Validating code:', code);
+      
+      // Use the dedicated validation endpoint
+      const response = await fetch(`${API_URL}/api/validate-invite`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code }),
+      });
+
+      console.log('Response status:', response.status);
+      
+      const data = await response.json();
+      console.log('Response data:', data);
+
+      if (!response.ok) {
+        throw new Error(data.message || data.error || 'Failed to validate invite code');
+      }
+
+      return {
+        success: data.success,
+        sessionToken: data.sessionToken
+      };
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+      console.error('Validation error:', errorMessage);
+      setError(errorMessage);
+      return {
+        success: false,
+        error: errorMessage
+      };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return {
+    validateInviteCode,
+    isLoading,
+    error,
+  };
+} */
+
+/* import { useState } from 'react';
 
 interface ValidationResponse {
   success: boolean;
@@ -199,15 +157,11 @@ export function useInviteCode() {
     setError(null);
 
     try {
-      console.log('Sending code:', code);
-      console.log('To URL:', `${API_URL}/api/validate-invite`);
-
-      const response = await fetch(`${API_URL}/api/validate-invite`, {
+      const response = await fetch('/api/validate-invite', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include',
         body: JSON.stringify({ code: code.trim() })
       });
 
@@ -217,14 +171,11 @@ export function useInviteCode() {
         throw new Error(data.message || 'Failed to validate code');
       }
 
-      if (!data.sessionToken) {
-        throw new Error('No session token received');
-      }
-
       return {
-        success: true,
+        success: data.success,
         sessionToken: data.sessionToken
       };
+
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to validate code';
       setError(errorMessage);
@@ -243,66 +194,3 @@ export function useInviteCode() {
     error
   };
 } */
-/* // src/hooks/useInviteCode.ts
-import { useState } from 'react';
-
-interface ValidationResponse {
-  success: boolean;
-  sessionToken?: string;
-  error?: string;
-}
-
-export function useInviteCode() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const validateInviteCode = async (code: string): Promise<ValidationResponse> => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      console.log('Sending code:', code); // Debug log
-      
-      // Use relative URL instead of absolute URL
-      const response = await fetch('/api/validate-invite', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ code: code.trim() })
-      });
-
-      const data = await response.json();
-      console.log('Response:', data); // Debug log
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to validate code');
-      }
-
-      if (!data.sessionToken) {
-        throw new Error('No session token received');
-      }
-
-      return {
-        success: true,
-        sessionToken: data.sessionToken
-      };
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to validate code';
-      setError(errorMessage);
-      return {
-        success: false,
-        error: errorMessage
-      };
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return {
-    validateInviteCode,
-    isLoading,
-    error
-  };
-}
- */

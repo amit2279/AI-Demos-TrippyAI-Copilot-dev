@@ -161,9 +161,21 @@ const anthropic = new Anthropic({
 
 
 // CORS first
-app.use(cors({
+/* app.use(cors({
   origin: 'http://localhost:5173',  // Just the frontend URL from VITE_API_URL
   methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+})); */
+
+// CORS configuration
+app.use(cors({
+  origin: [
+    'http://localhost:5173',               // Local development
+    'https://ai-demo-trippy.vercel.app',   // Production
+    /https:\/\/ai-demo-trippy-.*-amits-projects-04ce3c09\.vercel\.app/ // All Vercel preview deployments
+  ],
+  methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
@@ -171,6 +183,72 @@ app.use(cors({
 // Then your existing middleware
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Add this to your server.ts file just before the chat endpoint
+
+// Dedicated invite code validation endpoint
+app.post('/api/validate-invite', (req, res) => {
+  try {
+    console.log('[Server] Processing invite code validation');
+    console.log('[Server] Request body:', req.body);
+    
+    const { code } = req.body;
+    
+    if (!code || typeof code !== 'string') {
+      console.log('[Server] Invalid invite code format');
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invite code is required' 
+      });
+    }
+
+    // Get valid invite codes from env
+    const validCodes = process.env.INVITE_CODES?.split(',') || [];
+    const salt = process.env.INVITE_CODE_SALT;
+
+    if (!validCodes.length || !salt) {
+      console.error('[Server] Missing environment variables');
+      return res.status(500).json({
+        success: false,
+        message: 'Server configuration error'
+      });
+    }
+
+    // Hash the received code with salt
+    const hashedCode = crypto
+      .createHash('sha256')
+      .update(code.toLowerCase().trim() + salt)
+      .digest('hex');
+      
+    console.log('[Server] Validation attempt:', {
+      receivedCode: code,
+      hashedCode: hashedCode,
+      validCodesCount: validCodes.length,
+      isValid: validCodes.includes(hashedCode)
+    });
+
+    if (validCodes.includes(hashedCode)) {
+      console.log('[Server] Valid invite code');
+      const sessionToken = crypto.randomBytes(32).toString('hex');
+      return res.json({ 
+        success: true, 
+        sessionToken
+      });
+    }
+
+    console.log('[Server] Invalid invite code');
+    return res.status(401).json({ 
+      success: false, 
+      message: 'Invalid invite code' 
+    });
+  } catch (error) {
+    console.error('[Server] Error validating invite code:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error validating code'
+    });
+  }
+});
 
 // Add this endpoint alongside your other routes
 /* app.post('/api/validate-invite', (req, res) => {
