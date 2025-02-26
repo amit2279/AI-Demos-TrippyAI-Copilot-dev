@@ -6,6 +6,10 @@
       "maxDuration": 60
     }
   },
+  "routes": [
+    { "src": "/api/validate-invite", "dest": "/api/chat" },
+    { "src": "/api/chat", "dest": "/api/chat" }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",
