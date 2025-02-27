@@ -1,9 +1,7 @@
-// /api/debug-env.ts
 import type { Request, Response } from 'express';
-import cors from 'cors';
 
 // Simple debug endpoint to check environment variables
-export default async function handler(req: Request, res: Response) {
+export default function handler(req: Request, res: Response) {
   try {
     // Enable CORS for debugging
     res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -22,7 +20,8 @@ export default async function handler(req: Request, res: Response) {
       hasInviteCodes: typeof process.env.INVITE_CODES === 'string',
       inviteCodesLength: process.env.INVITE_CODES?.length || 0,
       hasSalt: typeof process.env.INVITE_CODE_SALT === 'string',
-      saltLength: process.env.INVITE_CODE_SALT?.length || 0
+      saltLength: process.env.INVITE_CODE_SALT?.length || 0,
+      firstFiveCharsOfSalt: process.env.INVITE_CODE_SALT?.substring(0, 5) || 'none'
     });
   } catch (error) {
     console.error('Debug endpoint error:', error);

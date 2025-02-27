@@ -269,11 +269,16 @@ export default async function handler(
 
   try {
 
+    // Inside your main handler function in chat.ts
     if (req.url?.includes('/debug-env')) {
       return res.status(200).json({
-        hasInviteCodes: !!process.env.INVITE_CODES,
-        inviteCodesCount: process.env.INVITE_CODES?.split(',').length || 0,
-        hasCodeSalt: !!process.env.INVITE_CODE_SALT
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'unknown',
+        hasInviteCodes: typeof process.env.INVITE_CODES === 'string',
+        inviteCodesLength: process.env.INVITE_CODES?.length || 0,
+        hasSalt: typeof process.env.INVITE_CODE_SALT === 'string',
+        saltLength: process.env.INVITE_CODE_SALT?.length || 0,
+        firstFiveCharsOfSalt: process.env.INVITE_CODE_SALT?.substring(0, 5) || 'none'
       });
     }
 
