@@ -236,6 +236,13 @@ app.post('/api/validate-invite', (req, res) => {
       });
     }
 
+    console.log('ENV CHECK:', {
+      hasInviteCodes: !!process.env.INVITE_CODES,
+      inviteCodesLength: process.env.INVITE_CODES?.length || 0,
+      hasCodeSalt: !!process.env.INVITE_CODE_SALT,
+      saltLength: process.env.INVITE_CODE_SALT?.length || 0
+    });
+
     console.log('[Server] Invalid invite code');
     return res.status(401).json({ 
       success: false, 

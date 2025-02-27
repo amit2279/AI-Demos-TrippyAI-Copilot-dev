@@ -256,6 +256,15 @@ export default async function handler(
   }
 
   try {
+
+    if (req.url?.includes('/debug-env')) {
+      return res.status(200).json({
+        hasInviteCodes: !!process.env.INVITE_CODES,
+        inviteCodesCount: process.env.INVITE_CODES?.split(',').length || 0,
+        hasCodeSalt: !!process.env.INVITE_CODE_SALT
+      });
+    }
+    
     // Check if this is an invite code validation request
     // Look for URL parameters as well
     /* const isValidationRequest = req.url?.includes('/validate-invite') || 
@@ -314,16 +323,32 @@ export default async function handler(
       }
 
       // Get valid invite codes from env
-      const validCodes = process.env.INVITE_CODES?.split(',').map(code => code.trim()) || [];
-      const salt = process.env.INVITE_CODE_SALT;
+      //const validCodes = process.env.INVITE_CODES?.split(',').map(code => code.trim()) || [];
+      //const salt = process.env.INVITE_CODE_SALT;
+
+      const validCodes = process.env.INVITE_CODES ? process.env.INVITE_CODES.split(',') : [];
+      const salt = process.env.INVITE_CODE_SALT || '';
 
       if (!validCodes.length || !salt) {
+
+        console.error('Missing vars:', {
+          codesPresent: !!process.env.INVITE_CODES,
+          saltPresent: !!process.env.INVITE_CODE_SALT
+        });
+
         console.error('[API] Missing environment variables');
         return res.status(500).json({
           success: false,
           message: 'Server configuration error'
         });
       }
+
+      console.log('ENV CHECK:------', {
+        hasInviteCodes: !!process.env.INVITE_CODES,
+        inviteCodesLength: process.env.INVITE_CODES?.length || 0,
+        hasCodeSalt: !!process.env.INVITE_CODE_SALT,
+        saltLength: process.env.INVITE_CODE_SALT?.length || 0
+      });     
 
       // Hash the received code with salt
       const processedCode = code.toLowerCase().trim();
