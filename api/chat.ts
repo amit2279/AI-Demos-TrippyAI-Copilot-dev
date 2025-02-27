@@ -413,7 +413,7 @@ export default async function handler(
 
       if (isVisionRequest) {
         const response = await anthropic.messages.create({
-          model: 'claude-3-opus-20240229',
+          model: 'claude-3-haiku-20240307',
           max_tokens: 4096,
           messages,
           system: VISION_SYSTEM_PROMPT,
@@ -424,7 +424,7 @@ export default async function handler(
         res.write(`data: ${JSON.stringify({ text })}\n\n`);
       } else {
         const stream = await anthropic.messages.create({
-          model: 'claude-3-opus-20240229',
+          model: 'claude-3-haiku-20240307',
           max_tokens: 4096,
           messages,
           system: CHAT_SYSTEM_PROMPT,
