@@ -11,7 +11,6 @@ interface ItineraryPanelProps {
   selectedLocationId?: string;
   onLocationsUpdate?: (locations: any[]) => void;
   streamingActivity?: boolean;
-  activeDay?: number; // Add new prop
 }
 
 const getTravelGroupIcon = (group: TravelGroup) => {
@@ -30,8 +29,7 @@ export function ItineraryPanel({
   onLocationSelect,
   selectedLocationId,
   onLocationsUpdate,
-  streamingActivity = false,
-  activeDay // Add new prop
+  streamingActivity = false
 }: ItineraryPanelProps) {
   const [expandedDay, setExpandedDay] = useState<number>(0);
   const [showBudget, setShowBudget] = useState(false);
@@ -50,12 +48,30 @@ export function ItineraryPanel({
     }
   }, [itinerary.days, onLocationsUpdate]);
 
-  // Auto-expand current day being updated
+  /* // Load header image
   useEffect(() => {
-    if (activeDay && activeDay > 0 && activeDay <= (itinerary.days?.length || 0)) {
-      setExpandedDay(activeDay - 1); // Convert from 1-based to 0-based index
+    if (itinerary.tripDetails?.destination) {
+      setIsImageLoading(true);
+      
+      // Create the image URL with proper encoding
+      const searchQuery = encodeURIComponent(`${itinerary.tripDetails.destination} landmark scenic`);
+      const imageUrl = `https://source.unsplash.com/1600x900/?${searchQuery}`;
+      //console.log('Loading header image:', imageUrl);
+      // Preload the image
+      const img = new Image();
+      img.onload = () => {
+        setHeaderImage(imageUrl);
+        setIsImageLoading(false);
+      };
+      img.onerror = () => {
+        // Fallback to a more generic search if the first one fails
+        const fallbackQuery = encodeURIComponent(`${itinerary.tripDetails.destination} city`);
+        const fallbackUrl = `https://source.unsplash.com/1600x900/?${fallbackQuery}`;
+        img.src = fallbackUrl;
+      };
+      img.src = imageUrl;
     }
-  }, [activeDay, itinerary.days?.length]);
+  }, [itinerary.tripDetails?.destination]); */
 
   const getDayStatus = (day: DayPlan) => {
     if (!day.activities?.length) {
@@ -176,7 +192,6 @@ export function ItineraryPanel({
                       previousDayComplete={previousDayComplete}
                       streamingActivity={streamingActivity}
                       dayNumber={index + 1}
-                      activeDay={activeDay} // Pass the active day prop
                     />
                   </div>
                 </div>

@@ -173,6 +173,7 @@ app.use(cors({
   origin: [
     'http://localhost:5173',               // Local development
     'https://ai-demo-trippy.vercel.app',   // Production
+    'http://localhost:3002',
     /https:\/\/ai-demo-trippy-.*-amits-projects-04ce3c09\.vercel\.app/ // All Vercel preview deployments
   ],
   methods: ['GET', 'POST', 'OPTIONS'],
@@ -207,7 +208,7 @@ app.post('/api/validate-invite', (req, res) => {
     const salt = process.env.INVITE_CODE_SALT;
 
     if (!validCodes.length || !salt) {
-      console.error('[Server] Missing environment variables');
+      console.error('[API] Missing environment variables');
       return res.status(500).json({
         success: false,
         message: 'Server configuration error'

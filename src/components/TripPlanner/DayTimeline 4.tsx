@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { MapPin, Clock, Bus } from 'lucide-react';
 import { DayPlan, Activity } from '../../types/itinerary';
+import { format } from 'date-fns';
 import { findPlace } from '../../services/places';
 import { ActivityShimmer } from '../ui/Shimmer';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -13,8 +14,8 @@ interface DayTimelineProps {
   previousDayComplete?: boolean;
   dayNumber: number;
   streamingActivity?: boolean;
-  activeDay?: number;
 }
+
 
 export function DayTimeline({ 
   day, 
@@ -23,34 +24,103 @@ export function DayTimeline({
   isLoading = false,
   previousDayComplete = true,
   dayNumber,
-  streamingActivity = false,
-  activeDay
+  streamingActivity = false
 }: DayTimelineProps) {
-  // Determine if this day should show shimmer
-  // We now always add the shimmer AFTER the activities if needed
-  const shouldShowShimmer = React.useMemo(() => {
-    // If day has no activities yet, always show shimmer
-    if (day.activities.length === 0) {
-      return true;
-    }
-    
-    // If streaming and this is the active day, show shimmer after the activities
-    if (streamingActivity && activeDay === dayNumber) {
-      return true;
-    }
-    
-    // Otherwise don't show shimmer
-    return false;
-  }, [day.activities.length, streamingActivity, dayNumber, activeDay]);
+  // Track both current activities and shimmer state
+  const [completedActivities, setCompletedActivities] = useState<Set<string>>(new Set());
+  const [showNextShimmer, setShowNextShimmer] = useState(true);
+  
+  // Add near the top of the DayTimeline function
+  useEffect(() => {
+    console.log(`[DayTimeline ${dayNumber}] Shimmer Debug:`, {
+      dayNumber,
+      activitiesCount: day.activities.length,
+      streamingActivity,
+      showNextShimmer,
+      previousDayComplete,
+      shouldShowShimmer: day.activities.length === 0 || (showNextShimmer && streamingActivity)
+    });
+  }, [day.activities.length, streamingActivity, showNextShimmer, previousDayComplete, dayNumber]);
 
-  // If waiting for previous day but no activities
-  if (!previousDayComplete && day.activities.length === 0) {
+
+  // Track new activities and update states
+  useEffect(() => {
+    console.log(`[DayTimeline ${dayNumber}] Activity Update:`, {
+      dayNumber,
+      currentActivities: day.activities.length,
+      completedCount: completedActivities.size,
+      streaming: streamingActivity,
+      previousComplete: previousDayComplete,
+      newActivitiesCount: day.activities.filter(activity => 
+        !completedActivities.has(activity.id)
+      ).length
+    });
+
+    // Get any new activities
+    const newActivities = day.activities.filter(activity => 
+      !completedActivities.has(activity.id)
+    );
+
+    if (newActivities.length > 0) {
+      // Update completed activities
+      setCompletedActivities(prev => {
+        const updated = new Set(prev);
+        newActivities.forEach(activity => updated.add(activity.id));
+        return updated;
+      });
+
+      // Show shimmer for next potential activity if we're still streaming
+      setShowNextShimmer(streamingActivity);
+    }
+  }, [day.activities, streamingActivity, dayNumber, previousDayComplete]);
+
+  // Handle streaming state changes
+  useEffect(() => {
+    /* console.log(`[DayTimeline ${dayNumber}] Streaming Update:`, {
+      streaming: streamingActivity
+    });
+ */
+    if (streamingActivity) {
+      // Show shimmer when streaming starts
+      setShowNextShimmer(true);
+    }else if (!streamingActivity) {
+      // Hide shimmer when streaming stops
+      setShowNextShimmer(false);
+    }
+  }, [streamingActivity, dayNumber]);
+
+  const handleMapsClick = async (e: React.MouseEvent, location: any) => {
+    e.stopPropagation();
+    try {
+      const mapsUrl = await findPlace(location);
+      window.open(mapsUrl, '_blank');
+    } catch (error) {
+      console.error('Error opening maps:', error);
+    }
+  };
+
+  // If waiting for previous day
+  if (!previousDayComplete) {
+    //console.log(`[DayTimeline ${dayNumber}] Waiting for previous day`);
     return (
       <div className="space-y-6">
         <ActivityShimmer />
       </div>
     );
   }
+
+  const shouldShowShimmer = 
+    // Always show shimmer if no activities yet
+    day.activities.length === 0 ||
+    // Show shimmer for next activity if streaming
+    (showNextShimmer && streamingActivity);
+
+  console.log(`[DayTimeline ${dayNumber}] Render State:`, {
+    activityCount: day.activities.length,
+    shouldShowShimmer,
+    showNextShimmer,
+    streaming: streamingActivity
+  });
 
   return (
     <div className="space-y-6">
@@ -66,24 +136,13 @@ export function DayTimeline({
           />
         ))}
         
-        {/* Show shimmer after activities when needed */}
+        {/* Show shimmer when needed */}
         {shouldShowShimmer && (
-          <ActivityShimmer key={`shimmer-day-${dayNumber}-${day.activities.length}`} />
+          <ActivityShimmer key="loading-shimmer" />
         )}
       </AnimatePresence>
     </div>
   );
-}
-
-function handleMapsClick(e: React.MouseEvent, location: any) {
-  e.stopPropagation();
-  try {
-    findPlace(location).then(mapsUrl => {
-      window.open(mapsUrl, '_blank');
-    });
-  } catch (error) {
-    console.error('Error opening maps:', error);
-  }
 }
 
 function ActivityCard({ 
