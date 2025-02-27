@@ -244,6 +244,18 @@ export default async function handler(
   res: Response
 ) {
 
+  // Add this at the beginning of your export default function handler
+  console.log('VERCEL DEBUG - ENV VARS:', {
+    NODE_ENV: process.env.NODE_ENV,
+    HAS_INVITE_CODES: typeof process.env.INVITE_CODES === 'string',
+    INVITE_CODES_LENGTH: process.env.INVITE_CODES?.length || 0,
+    HAS_SALT: typeof process.env.INVITE_CODE_SALT === 'string',
+    SALT_LENGTH: process.env.INVITE_CODE_SALT?.length || 0,
+    // Show first 5 chars of each if they exist
+    INVITE_CODES_PREVIEW: process.env.INVITE_CODES?.substring(0, 5) || 'none',
+    SALT_PREVIEW: process.env.INVITE_CODE_SALT?.substring(0, 5) || 'none'
+  });
+
   console.log('Request URL:', req.url);
   console.log('Request method:', req.method);
   console.log('Request body:', JSON.stringify(req.body, null, 2));
@@ -264,7 +276,7 @@ export default async function handler(
         hasCodeSalt: !!process.env.INVITE_CODE_SALT
       });
     }
-    
+
     // Check if this is an invite code validation request
     // Look for URL parameters as well
     /* const isValidationRequest = req.url?.includes('/validate-invite') || 
