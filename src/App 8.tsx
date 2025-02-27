@@ -14,7 +14,6 @@ import { X } from 'lucide-react';
 import { ItineraryPanel } from './components/TripPlanner/ItineraryPanel';
 import { InviteModal } from './components/Auth/InviteModal';
 import { AuthOverlay } from './components/Auth/AuthOverlay';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 
 
@@ -79,27 +78,11 @@ export default function App() {
   const [streamingActivity, setStreamingActivity] = useState(false);
   const [isPanelAnimating, setIsPanelAnimating] = useState(false);
 
-  // Add this state to your App component
-  const [showItineraryPanel, setShowItineraryPanel] = useState(true);
-
-  // Add this toggle function
-  const toggleItineraryPanel = useCallback(() => {
-    setShowItineraryPanel(prev => !prev);
-  }, []);
-
   // Set initial city context only once
   useEffect(() => {
     cityContext.setCurrentCity(initialCity.name);
   }, [initialCity.name]);
 
-  // Add this useEffect for debugging
-  useEffect(() => {
-    console.log('Itinerary panel visibility changed:', {
-      showItinerary, 
-      isPanelAnimating, 
-      showItineraryPanel
-    });
-  }, [showItinerary, isPanelAnimating, showItineraryPanel]);
 /*   useEffect(() => {
     const sessionToken = localStorage.getItem('sessionToken');
     if (sessionToken) {
@@ -378,67 +361,41 @@ export default function App() {
           />
         </div>
   
-        {/* // Add this to your App.tsx */}
         {/* Itinerary Panel */}
         {(showItinerary || isPanelAnimating) && currentItinerary && (
-          <>
-            {/* Toggle Button - Now positioned at the top */}
-            <div 
-              className="absolute z-50 transition-all duration-200 ease-out"
-              style={{
-                left: showItineraryPanel ? 'calc(400px + 520px)' : '420px',
-                top: '1rem', // Same vertical position as close button
-              }}
-            >
-              <button
-                onClick={toggleItineraryPanel}
-                className="flex items-center justify-center bg-white rounded-r-md shadow-md border border-gray-200 border-l-0 w-8 h-10 hover:bg-gray-50 transition-colors"
+              <div 
+                className="w-[520px] flex-shrink-0 bg-white shadow-lg overflow-y-auto transform transition-all duration-500 ease-out absolute top-0 bottom-0 z-30"
                 style={{
-                  boxShadow: '2px 0 4px rgba(0, 0, 0, 0.1)'
+                  left: '400px',
+                  transform: `translateX(${showItinerary ? '0' : '-520px'})`,
+                  opacity: showItinerary ? 1 : 0,
+                  visibility: isPanelAnimating || showItinerary ? 'visible' : 'hidden'
                 }}
-                aria-label={showItineraryPanel ? "Hide itinerary" : "Show itinerary"}
+                onTransitionEnd={handleTransitionEnd}
               >
-                {showItineraryPanel ? (
-                  <ChevronLeft size={18} className="text-gray-600" />
-                ) : (
-                  <ChevronRight size={18} className="text-gray-600" />
-                )}
-              </button>
-            </div>
-
-            {/* Itinerary Panel - Improved animation */}
-            <div 
-              className="w-[520px] flex-shrink-0 bg-white shadow-lg overflow-y-auto absolute top-0 bottom-0 z-30 transition-transform duration-200 ease-out"
-              style={{
-                left: '400px',
-                transform: `translateX(${showItineraryPanel ? '0' : '-500px'})`,
-                visibility: isPanelAnimating || showItinerary ? 'visible' : 'hidden'
-              }}
-              onTransitionEnd={handleTransitionEnd}
-            >
-             { <button 
-                onClick={closeItinerary}
-                className="absolute top-4 right-4 z-50 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white/90 transition-colors shadow-md transition-transform duration-200 ease-out"
-                aria-label="Close itinerary"
-              >
-                <X size={20} className="text-gray-600" />
-              </button>}
-              
-              <ItineraryPanel
-                itinerary={currentItinerary}
-                onLocationSelect={(locationId) => {
-                  const location = locations.find(loc => loc.id === locationId);
-                  if (location) {
-                    handleLocationSelect(location);
-                  }
-                }}
-                selectedLocationId={selectedLocation?.id}
-                onLocationsUpdate={handleLocationsUpdate}
-                streamingActivity={streamingActivity}
-              />
-            </div>
-          </>
-        )}
+                {/* ... rest of itinerary panel ... */}
+                <button 
+                  onClick={closeItinerary}
+                  className="absolute top-4 right-4 z-50 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white/90 transition-colors shadow-md"
+                  aria-label="Close itinerary"
+                >
+                  <X size={20} className="text-gray-600" />
+                </button>
+                
+                <ItineraryPanel
+                  itinerary={currentItinerary}
+                  onLocationSelect={(locationId) => {
+                    const location = locations.find(loc => loc.id === locationId);
+                    if (location) {
+                      handleLocationSelect(location);
+                    }
+                  }}
+                  selectedLocationId={selectedLocation?.id}
+                  onLocationsUpdate={handleLocationsUpdate}
+                  streamingActivity={streamingActivity}
+                />
+              </div>
+            )}
       </div>
       {/* Auth Overlay */}
     { <AuthOverlay 
