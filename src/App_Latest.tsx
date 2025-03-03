@@ -12,44 +12,8 @@ import { cityContext } from './services/cityContext';
 import { Itinerary } from './types/itinerary';
 import { X } from 'lucide-react';
 import { ItineraryPanel } from './components/TripPlanner/ItineraryPanel_minimal';
-import { InviteModal } from './components/Auth/InviteModal';
-import { AuthOverlay } from './components/Auth/AuthOverlay';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-
-// Add Sentry and PostHog
-import * as Sentry from "@sentry/react";
-//import posthog from 'posthog-js';
-// src/pages/_app.tsx
-//import type { AppProps } from 'next/app'
-
-
-/* // Initialize analytics
-if (import.meta.env.VITE_POSTHOG_KEY) {
-  posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
-    api_host: import.meta.env.VITE_POSTHOG_HOST || 'https://app.posthog.com',
-    loaded: (posthog) => {
-      if (import.meta.env.DEV) posthog.opt_out_capturing();
-    }
-  });
-} */
-
-// Initialize Sentry
-if (import.meta.env.VITE_SENTRY_DSN) {
-  Sentry.init({
-    dsn: import.meta.env.VITE_SENTRY_DSN,
-    environment: import.meta.env.MODE,
-    enabled: import.meta.env.PROD,
-  });
-}
 
 export default function App() {
-
-  const [isAuthenticated, setIsAuthenticated] = useState(false); // Start as false
-
-/*   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return !!localStorage.getItem('sessionToken');
-  }); */
-  
   // Initialize city service only once when app starts
   const initialCity = React.useMemo(() => getRandomCity(), []);
   const initialLocation = React.useMemo(() => getCityAsLocation(initialCity), [initialCity]);
@@ -76,73 +40,20 @@ export default function App() {
   const [streamingActivity, setStreamingActivity] = useState(false);
   const [isPanelAnimating, setIsPanelAnimating] = useState(false);
 
-  // Add this state to your App component
-  const [showItineraryPanel, setShowItineraryPanel] = useState(true);
-
-  // Add this toggle function
-  const toggleItineraryPanel = useCallback(() => {
-    setShowItineraryPanel(prev => !prev);
-  }, []);
-
   // Set initial city context only once
   useEffect(() => {
     cityContext.setCurrentCity(initialCity.name);
   }, [initialCity.name]);
 
-  // Add this useEffect for debugging
+  // Add sendMessage to window object
   useEffect(() => {
-    console.log('Itinerary panel visibility changed:', {
-      showItinerary, 
-      isPanelAnimating, 
-      showItineraryPanel
-    });
-  }, [showItinerary, isPanelAnimating, showItineraryPanel]);
-/*   useEffect(() => {
-    const sessionToken = localStorage.getItem('sessionToken');
-    if (sessionToken) {
-      setIsAuthenticated(true);
-    }
-  }, []); */
-
-  useEffect(() => {
-    // Check for existing session
-    const token = localStorage.getItem('sessionToken');
-    if (token) {
-      setIsAuthenticated(true);
-    }
+    window.sendMessage = (message: string) => {
+      handleSendMessage(message);
+    };
+    return () => {
+      delete window.sendMessage;
+    };
   }, []);
-
-
-  console.log('[App.tsx] -- selectedLocation ----- ', selectedLocation);
-
-
-
-/*   // Handle successful authentication
-  const handleAuthSuccess = useCallback(() => {
-    localStorage.setItem('sessionToken', 'authenticated');
-    setIsAuthenticated(true);
-    posthog.capture('user_authenticated');
-  }, []); */
-
-/*   // Update handleAuthSuccess
-  const handleAuthSuccess = useCallback(() => {
-    localStorage.setItem('sessionToken', 'authenticated');
-    setIsAuthenticated(true);
-    posthog.capture('user_authenticated');
-  }, []); */
-
-  // Update the success handler
-   const handleAuthSuccess = useCallback((sessionToken: string) => {
-    localStorage.setItem('sessionToken', sessionToken);
-    setIsAuthenticated(true);
-    //posthog.capture('user_authenticated');
-  }, []);
-
-  // Add a logout function if needed
-/*   const handleLogout = useCallback(() => {
-    localStorage.removeItem('sessionToken');
-    setIsAuthenticated(false);
-  }, []); */
 
   const handleLocationsUpdate = useCallback((newLocations: Location[]) => {
     console.log('[App] Updating locations:', newLocations);
@@ -181,15 +92,12 @@ export default function App() {
     }
   }, []);
 
-
-  // In App.tsx, add closeItinerary handler
   const closeItinerary = useCallback(() => {
     setShowItinerary(false);
-    // Reset after animation completes
     setTimeout(() => {
       setCurrentItinerary(null);
       setStreamingActivity(false);
-    }, 500); // Match the duration in the CSS transition
+    }, 500);
   }, []);
 
   const handleItineraryUpdate = useCallback((
@@ -199,7 +107,6 @@ export default function App() {
     setCurrentItinerary(itinerary as Itinerary);
     setIsPanelAnimating(true);
     
-    // Delay showing content until animation starts
     setTimeout(() => {
       setShowItinerary(true);
       setStreamingActivity(isStreaming ?? false);
@@ -216,32 +123,6 @@ export default function App() {
       }
     }
   }, []);
-
-
-/*   const handleItineraryUpdate = useCallback((
-    itinerary: Partial<Itinerary>, 
-    isStreaming?: boolean
-  ) => {
-    setCurrentItinerary(itinerary as Itinerary);
-    setIsPanelAnimating(true);
-    
-    // Delay showing content until animation starts
-    setTimeout(() => {
-      setShowItinerary(true);
-      setStreamingActivity(isStreaming ?? false);
-    }, 50);
-  
-    if (itinerary.days?.length) {
-      const allLocations = itinerary.days.flatMap(day => 
-        day.activities?.map(activity => activity.location) || []
-      );
-  
-      if (allLocations.length > 0) {
-        setLocations(allLocations);
-        setSelectedLocation(allLocations[0]);
-      }
-    }
-  }, []); */
 
   const handleSendMessage = useCallback(async (content: string) => {
     setError(null);
@@ -332,16 +213,13 @@ export default function App() {
     }
   }, [messages]);
 
-  // Handle animation end
   const handleTransitionEnd = useCallback(() => {
     setIsPanelAnimating(false);
   }, []);
 
   return (
     <div className="relative">
-      {/* Main App */}
       <div className="flex h-screen overflow-hidden">
-        {/* Left Panel - Chat */}
         <div className="w-[400px] flex-shrink-0 bg-white z-40 relative shadow-xl">
           <ChatPanel
             messages={messages}
@@ -359,7 +237,6 @@ export default function App() {
           />
         </div>
         
-        {/* Center Panel - Map */}
         <div className="flex-1 relative">
           <div className="absolute top-4 right-4 z-40">
             <MapToggle view={mapView} onToggle={setMapView} />
@@ -374,74 +251,84 @@ export default function App() {
             isProcessingLocation={isProcessingImages}
           />
         </div>
-  
-        {/* // Add this to your App.tsx */}
-        {/* Itinerary Panel */}
         {(showItinerary || isPanelAnimating) && currentItinerary && (
-          <>
-            {/* Toggle Button - Now positioned at the top */}
-            <div 
-              className="absolute z-50 transition-all duration-200 ease-out"
-              style={{
-                left: showItineraryPanel ? 'calc(400px + 520px)' : '420px',
-                top: '1rem', // Same vertical position as close button
-              }}
+          <div 
+            className="w-[500px] flex-shrink-0 bg-white shadow-lg overflow-y-auto transform transition-all duration-500 ease-out absolute top-0 bottom-0 z-30"
+            style={{
+              left: '400px',
+              transform: `translateX(${showItinerary ? '0' : '-400px'})`,
+              opacity: showItinerary ? 1 : 0,
+              visibility: isPanelAnimating || showItinerary ? 'visible' : 'hidden'
+            }}
+            onTransitionEnd={handleTransitionEnd}
+          >
+            <button 
+              onClick={closeItinerary}
+              className="absolute top-4 right-4 z-50 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white/90 transition-colors shadow-md"
+              aria-label="Close itinerary"
             >
-              <button
-                onClick={toggleItineraryPanel}
-                className="flex items-center justify-center bg-white rounded-r-md shadow-md border border-gray-200 border-l-0 w-8 h-10 hover:bg-gray-50 transition-colors"
-                style={{
-                  boxShadow: '2px 0 4px rgba(0, 0, 0, 0.1)'
-                }}
-                aria-label={showItineraryPanel ? "Hide itinerary" : "Show itinerary"}
-              >
-                {showItineraryPanel ? (
-                  <ChevronLeft size={18} className="text-gray-600" />
-                ) : (
-                  <ChevronRight size={18} className="text-gray-600" />
-                )}
-              </button>
-            </div>
-
-            {/* Itinerary Panel - Improved animation */}
-            <div 
-              className="w-[520px] flex-shrink-0 bg-white shadow-lg overflow-y-auto absolute top-0 bottom-0 z-30 transition-transform duration-200 ease-out"
-              style={{
-                left: '400px',
-                transform: `translateX(${showItineraryPanel ? '0' : '-500px'})`,
-                visibility: isPanelAnimating || showItinerary ? 'visible' : 'hidden'
+              <X size={20} className="text-gray-600" />
+            </button>
+            
+            <ItineraryPanel
+              itinerary={currentItinerary}
+              onLocationSelect={(locationId) => {
+                const location = locations.find(loc => loc.id === locationId);
+                if (location) {
+                  handleLocationSelect(location);
+                }
               }}
-              onTransitionEnd={handleTransitionEnd}
-            >
-             { <button 
-                onClick={closeItinerary}
-                className="absolute top-4 right-4 z-50 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white/90 transition-colors shadow-md transition-transform duration-200 ease-out"
-                aria-label="Close itinerary"
-              >
-                <X size={20} className="text-gray-600" />
-              </button>}
-              
-              <ItineraryPanel
-                itinerary={currentItinerary}
-                onLocationSelect={(locationId) => {
-                  const location = locations.find(loc => loc.id === locationId);
-                  if (location) {
-                    handleLocationSelect(location);
-                  }
-                }}
-                selectedLocationId={selectedLocation?.id}
-                onLocationsUpdate={handleLocationsUpdate}
-                streamingActivity={streamingActivity}
-              />
-            </div>
-          </>
+              selectedLocationId={selectedLocation?.id}
+              onLocationsUpdate={handleLocationsUpdate}
+              streamingActivity={streamingActivity}
+            />
+          </div>
         )}
+        {/* {(showItinerary || isPanelAnimating) && currentItinerary && (
+          <div 
+            className="w-[520px] flex-shrink-0 bg-white shadow-lg overflow-y-auto transform transition-all duration-500 ease-out absolute top-0 bottom-0 z-30"
+            style={{
+              left: '400px',
+              transform: `translateX(${showItinerary ? '0' : '-520px'})`,
+              opacity: showItinerary ? 1 : 0,
+              visibility: isPanelAnimating || showItinerary ? 'visible' : 'hidden'
+            }}
+            onTransitionEnd={handleTransitionEnd}
+          >
+            <button 
+              onClick={closeItinerary}
+              className="absolute top-4 right-4 z-50 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white/90 transition-colors shadow-md"
+              aria-label="Close itinerary"
+            >
+              <X size={20} className="text-gray-600" />
+            </button>
+            <div 
+              className="itinerary-container" 
+              style={{ 
+                width: '400px', 
+                maxWidth: '100%',
+                backgroundColor: 'yellow' // Debug color
+              }}
+            >
+            </div>
+            <ItineraryPanel
+              itinerary={currentItinerary}
+              onLocationSelect={(locationId) => {
+                const location = locations.find(loc => loc.id === locationId);
+                if (location) {
+                  handleLocationSelect(location);
+                }
+              }}
+              selectedLocationId={selectedLocation?.id}
+              onLocationsUpdate={handleLocationsUpdate}
+              streamingActivity={streamingActivity}
+            />
+          </div>
+        )} */}
       </div>
-      {/* Auth Overlay */}
-      { <AuthOverlay 
-        isAuthenticated={isAuthenticated} 
-        onSuccess={handleAuthSuccess}
-      /> }
-  </div>
+    </div>
   );
 }
+
+
+

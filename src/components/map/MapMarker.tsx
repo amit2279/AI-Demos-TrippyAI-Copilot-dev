@@ -218,7 +218,7 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({
     }
   }, [locations, isInitialLoad, isMapAnimating]);
 
-  return (
+ /*  return (
     <>
       {locations.map((location, index) => (
         <Marker
@@ -281,6 +281,85 @@ export const MapMarkers: React.FC<MapMarkersProps> = ({
                     </button>
                     <button
                       onClick={(e) => handleOpenMaps(location, e)}
+                      className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                    >
+                      <ExternalLink size={14} />
+                      Open in Maps
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Popup>
+        </Marker>
+      ))}
+    </>
+  ); */
+  return (
+    <>
+      {locations.map((location, index) => (
+        <Marker
+          key={location.id}
+          position={[location.position.lat, location.position.lng]}
+          icon={createPin({ 
+            number: index + 1,
+            color: COLOR_SEQUENCE[index % COLOR_SEQUENCE.length],
+            scale: selectedLocation?.id === location.id ? 1.2 : 1
+          })}
+          eventHandlers={{
+            click: () => onLocationSelect(location)
+          }}
+        >
+          <Popup className="custom-popup">
+            <div className="min-w-[280px] max-w-[320px]">
+              <div className="flex gap-3">
+                <div className="w-24 h-24 flex-shrink-0">
+                  <img
+                    src={location.imageUrl}
+                    alt={location.name}
+                    className="w-full h-full object-cover rounded-lg"
+                    onError={(e) => {
+                      e.currentTarget.src = `https://source.unsplash.com/800x600/?${encodeURIComponent(location.name + ' landmark')}`;
+                    }}
+                  />
+                </div>
+
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900">{location.name}</h3>
+                  
+                  <div className="flex items-center gap-1 mt-1">
+                    <div className="flex">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          size={16}
+                          className={`${
+                            i < Math.floor(location.rating)
+                              ? 'text-yellow-400 fill-current'
+                              : 'text-gray-300'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-sm text-gray-600">
+                      ({location.reviews.toLocaleString()})
+                    </span>
+                  </div>
+
+                  <p className="text-sm text-gray-600 mt-2 line-clamp-2">
+                    {location.description}
+                  </p>
+
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      onClick={() => onLocationSelect(location)}
+                      className="flex items-center gap-1 px-3 py-1.5 text-sm bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                    >
+                      <MapPin size={14} />
+                      View Details
+                    </button>
+                    <button
+                      onClick={(e) => handleMapsClick(e, location)}
                       className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
                     >
                       <ExternalLink size={14} />

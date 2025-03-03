@@ -31,8 +31,6 @@ export function TripPlannerModal({ onClose, onSubmit, isLoading = false }: TripP
     });
   };
 
-  
-
   const activityTypes: ActivityType[] = [
     'Cultural',
     'Foodie', 

@@ -5,6 +5,7 @@ import { ChatMessage } from './ChatMessage';
 import { ProcessingIndicator } from './ProcessingIndicator';
 import { QuickActionsPanel } from './QuickActionsPanel';
 import { ImageLocationSearch } from './ImageLocationSearch';
+import { TripPlannerModal } from './TripPlanner/Modal';
 import { TripDetails, Itinerary } from '../types/itinerary';
 import { generateItinerary } from '../services/itinerary/builder';
 
@@ -20,7 +21,7 @@ interface ChatPanelProps {
   weatherLocation: string | null;
   onImageSearch: (images: File[]) => void;
   isProcessingImages: boolean;
-  onItineraryUpdate?: (itinerary: Partial<Itinerary>, isStreaming?: boolean) => void;
+  onItineraryUpdate?: (itinerary: Partial<Itinerary>) => void;
 }
 
 export function ChatPanel({
@@ -40,6 +41,8 @@ export function ChatPanel({
   const [input, setInput] = useState('');
   const [showProcessing, setShowProcessing] = useState(false);
   const [showImageSearch, setShowImageSearch] = useState(false);
+  const [showTripPlanner, setShowTripPlanner] = useState(false);
+  const [tripPlannerError, setTripPlannerError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -64,11 +67,8 @@ export function ChatPanel({
         setShowImageSearch(true);
         break;
       case 'plan':
-        // Trigger itinerary panel to slide in with initial state
-        onItineraryUpdate?.({
-          tripDetails: {},
-          days: []
-        });
+        setShowTripPlanner(true);
+        setTripPlannerError(null);
         break;
       case 'weather':
         onSendMessage('What\'s the weather like?');
@@ -79,8 +79,11 @@ export function ChatPanel({
     }
   };
 
-  const handleTripPlannerSubmit = async (details: TripDetails) => {
+  /* const handleTripPlannerSubmit = async (details: TripDetails) => {
     try {
+      setTripPlannerError(null);
+      setShowTripPlanner(false);
+
       // Start with a loading state
       onItineraryUpdate?.({
         tripDetails: {
@@ -91,23 +94,53 @@ export function ChatPanel({
         }
       });
 
-      // Generate the itinerary message
-      const message = `I'm planning a trip to ${details.destination} ${
-        details.startDate && details.endDate 
-          ? `from ${details.startDate.toLocaleDateString()} to ${details.endDate.toLocaleDateString()}` 
-          : ''
-      }. I'm traveling as a ${details.travelGroup}${
-        details.preferences?.activityTypes?.length 
-          ? `. I'm interested in: ${details.preferences.activityTypes.join(', ')}`
-          : ''
-      }. Can you suggest an itinerary?`;
+      // Generate the itinerary with real-time updates
+      const itinerary = await generateItinerary(details, (partialItinerary) => {
+        //console.log('[ChatPanel] Received partial itinerary update:', partialItinerary);
+        onItineraryUpdate?.(partialItinerary);
+      });
 
-      onSendMessage(message);
+      // Final update with complete itinerary
+      onItineraryUpdate?.(itinerary);
+
     } catch (error) {
       console.error('Error generating itinerary:', error);
+      setTripPlannerError('Failed to generate itinerary. Please try again.');
+      setShowTripPlanner(true);
+    }
+  }; */
+
+  const handleTripPlannerSubmit = async (details: TripDetails) => {
+    try {
+      setTripPlannerError(null);
+      setShowTripPlanner(false);
+  
+      // Start with a loading state
+      onItineraryUpdate?.({
+        tripDetails: {
+          destination: details.destination,
+          startDate: details.startDate?.toISOString(),
+          endDate: details.endDate?.toISOString(),
+          travelGroup: details.travelGroup
+        }
+      }, false); // Initial state, not streaming yet
+  
+      // Generate the itinerary with real-time updates
+      const itinerary = await generateItinerary(details, (partialItinerary, streamingActivity) => {
+        onItineraryUpdate?.(partialItinerary, streamingActivity);
+      });
+  
+      // Final update with complete itinerary
+      onItineraryUpdate?.(itinerary, false); // Final state, not streaming anymore
+  
+    } catch (error) {
+      console.error('Error generating itinerary:', error);
+      setTripPlannerError('Failed to generate itinerary. Please try again.');
+      setShowTripPlanner(true);
     }
   };
-
+  
+  
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Header */}
@@ -172,12 +205,21 @@ export function ChatPanel({
         </form>
       </div>
 
-      {/* Image Search Modal */}
+      {/* Modals */}
       {showImageSearch && (
         <ImageLocationSearch
           onSubmit={onImageSearch}
           onClose={() => setShowImageSearch(false)}
           isProcessing={isProcessingImages}
+        />
+      )}
+
+      {showTripPlanner && (
+        <TripPlannerModal
+          onClose={() => setShowTripPlanner(false)}
+          onSubmit={handleTripPlannerSubmit}
+          isLoading={isLoading}
+          error={tripPlannerError}
         />
       )}
     </div>
