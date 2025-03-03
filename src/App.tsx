@@ -437,6 +437,7 @@ export default function App() {
           </>
         )}
       </div>
+      
       {/* Auth Overlay */}
       { <AuthOverlay 
         isAuthenticated={isAuthenticated} 
