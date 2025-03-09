@@ -118,7 +118,7 @@ export function ChatPanel({
           </div>
           <div>
             <h2 className="text-xl font-bold text-gray-800">✈️ Tripper</h2>
-            <p className="text-sm text-gray-500">Your AI Travel Companion</p>
+            <p className="text-xs text-gray-500">Your AI Travel Companion</p>
           </div>
         </div>
       </div>

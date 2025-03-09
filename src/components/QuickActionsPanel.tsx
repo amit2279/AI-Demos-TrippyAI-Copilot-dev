@@ -34,8 +34,8 @@ export const QuickActionsPanel: React.FC<QuickActionsPanelProps> = ({ onActionCl
             onClick={() => onActionClick('weather')}
             className="flex-1 flex flex-col items-center justify-center p-2 rounded-lg hover:bg-gray-50 transition-colors"
           >
-            <CloudSun size={20} className="text-blue-500 mb-1" />
-            <span className="text-xs text-gray-600">Weather</span>
+            <CloudSun size={25} className="text-blue-500 mb-1" />
+            <span className="text-xs text-gray-600">Weather Info</span>
           </button>
           
           <button
@@ -43,7 +43,7 @@ export const QuickActionsPanel: React.FC<QuickActionsPanelProps> = ({ onActionCl
             className="flex-1 flex flex-col items-center justify-center p-2 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <Calendar size={20} className="text-green-500 mb-1" />
-            <span className="text-xs text-gray-600">Plan Trip</span>
+            <span className="text-xs text-gray-600">Plan a Trip</span>
           </button>
           
           <button
@@ -51,7 +51,7 @@ export const QuickActionsPanel: React.FC<QuickActionsPanelProps> = ({ onActionCl
             className="flex-1 flex flex-col items-center justify-center p-2 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <Map size={20} className="text-purple-500 mb-1" />
-            <span className="text-xs text-gray-600">Find Place</span>
+            <span className="text-xs text-gray-600">Find a Place</span>
           </button>
           
           {/* <button

@@ -114,13 +114,6 @@ export const MapPanel: React.FC<MapPanelProps> = ({
   const [selectedMarkerLocation, setSelectedMarkerLocation] = useState<Location | null>(null);
   const mapRef = useRef<L.Map | null>(null);
 
-  useEffect(() => {
-    if (selectedLocation) {
-      setSelectedMarkerLocation(selectedLocation);
-      //setShowInfoCard(true);
-    }
-  }, [selectedLocation]);
-
   const validLocations = locations.filter(loc => 
     loc.position && 
     !isNaN(loc.position.lat) && 
@@ -166,6 +159,32 @@ export const MapPanel: React.FC<MapPanelProps> = ({
     onLocationSelect(null);
   };
 
+  useEffect(() => {
+    if (selectedLocation) {
+      console.log('[MapPanel] Selected location updated:', selectedLocation);
+      setSelectedMarkerLocation(selectedLocation);
+      //setShowInfoCard(true);
+    }
+  }, [selectedLocation]);
+
+  // In MapPanel.tsx, add an effect to handle location changes
+  useEffect(() => {
+    console.log('[MapPanel] Locations updated:', validLocations.length);
+    
+    // If a specific location is selected, ensure it has the correct appearance
+    if (selectedLocation) {
+      const locationInCollection = validLocations.find(
+        loc => loc.id === selectedLocation.id
+      );
+      
+      if (locationInCollection && locationInCollection.dayNumber !== selectedLocation.dayNumber) {
+        // If the day assignment has changed, update the selected location
+        setSelectedMarkerLocation(locationInCollection);
+      }
+    }
+  }, [validLocations, selectedLocation]);
+
+
   return (
     <div className="h-full relative">
       <MapContainer
@@ -189,7 +208,101 @@ export const MapPanel: React.FC<MapPanelProps> = ({
             onLocationSelect(null);
           }} 
         />
-        {validLocations.map((location, index) => (
+       {/*  // Replace the existing marker creation code with this updated version: */}
+       {validLocations.map((location, index) => {
+          // Check if we're dealing with day-based locations
+          const hasDays = validLocations.some(loc => loc.dayNumber !== undefined);
+          
+          let markerIcon;
+          const isBlueMarker = !hasDays || 
+            (location.dayNumber === undefined && COLOR_SEQUENCE[index % COLOR_SEQUENCE.length] === 'blue');
+          
+          if (hasDays) {
+            // Case 1: Day-based itinerary with color coding
+            const dayNumber = location.dayNumber;
+            const colorKey = dayNumber 
+              ? COLOR_SEQUENCE[(dayNumber - 1) % COLOR_SEQUENCE.length]
+              : 'blue';
+              
+            markerIcon = createPin({ 
+              number: dayNumber || index + 1, 
+              color: colorKey,
+              scale: 0.8,
+              // Only animate blue pins
+              animated: colorKey === 'blue',
+              // IMPORTANT: Pass the location ID to track which pins are new
+              id: location.id
+            });
+          } else {
+            // Case 2: Multiple locations without days (all blue with numbers)
+            markerIcon = locations.length > 1 
+              ? createPin({ 
+                  number: index + 1, 
+                  color: 'blue', 
+                  scale: 1,
+                  // Always animate blue pins 
+                  animated: true,
+                  // IMPORTANT: Pass the location ID to track which pins are new
+                  id: location.id
+                })
+              : createPin({ 
+                  color: 'blue', 
+                  scale: 0.8,
+                  // Always animate blue pins
+                  animated: true,
+                  // IMPORTANT: Pass the location ID to track which pins are new
+                  id: location.id
+                });
+          }
+            
+          return (
+            <Marker
+              key={location.id}
+              position={[location.position.lat, location.position.lng]}
+              icon={markerIcon}
+              eventHandlers={{
+                click: () => handleMarkerClick(location)
+              }}
+            />
+          );
+        })}
+        {/* {validLocations.map((location, index) => {
+          // Check if we're dealing with day-based locations
+          const hasDays = validLocations.some(loc => loc.dayNumber !== undefined);
+          
+          let markerIcon;
+          
+          if (hasDays) {
+            // Case 1: Day-based itinerary with color coding
+            const dayNumber = location.dayNumber;
+            const colorKey = dayNumber 
+              ? COLOR_SEQUENCE[(dayNumber - 1) % COLOR_SEQUENCE.length]
+              : 'blue';
+              
+            markerIcon = createPin({ 
+              number: dayNumber || index + 1, // Show day number or index if in "Your places"
+              color: colorKey,
+              scale: 0.8 
+            });
+          } else {
+            // Case 2: Multiple locations without days (all blue with numbers)
+            markerIcon = locations.length > 1 
+              ? createPin({ number: index + 1, color: 'blue', scale: 1 })
+              : createPin({ color: 'blue', scale: 0.8 });
+          }
+            
+          return (
+            <Marker
+              key={location.id}
+              position={[location.position.lat, location.position.lng]}
+              icon={markerIcon}
+              eventHandlers={{
+                click: () => handleMarkerClick(location)
+              }}
+            />
+          );
+        })} */}
+        {/* {validLocations.map((location, index) => (
           <Marker
             key={location.id}
             position={[location.position.lat, location.position.lng]}
@@ -202,7 +315,29 @@ export const MapPanel: React.FC<MapPanelProps> = ({
               click: () => handleMarkerClick(location)
             }}
           />
-        ))}
+        ))} */}
+        {/* {validLocations.map((location, index) => {
+          // Determine color based on day number if available
+          const dayNumber = location.dayNumber; 
+          const colorKey = dayNumber 
+            ? COLOR_SEQUENCE[(dayNumber - 1) % COLOR_SEQUENCE.length]
+            : 'blue';
+            
+          return (
+            <Marker
+              key={location.id}
+              position={[location.position.lat, location.position.lng]}
+              icon={createPin({ 
+                number: dayNumber, // Show day number if available
+                color: colorKey,
+                scale: 0.8 
+              })}
+              eventHandlers={{
+                click: () => handleMarkerClick(location)
+              }}
+            />
+          );
+        })} */}
       </MapContainer>
       
       {isProcessingLocation && (

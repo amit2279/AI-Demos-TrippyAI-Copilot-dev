@@ -13,16 +13,6 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
   locations, 
   selectedLocation 
 }) => {
-
-  // Add this console log at the very beginning of the component
-  console.log('[MapUpdater] RENDER', {
-    timestamp: new Date().toISOString(),
-    locationsCount: locations.length,
-    locationIds: locations.map(l => l.id),
-    hasSelectedLocation: !!selectedLocation,
-    selectedLocationId: selectedLocation?.id
-  });  
-
   const map = useMap();
   const [isAnimating, setIsAnimating] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout>();
@@ -31,9 +21,7 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
   const isInitialMount = useRef(true);
   const updateCount = useRef(0);
 
-
-
-  /* // Debug log for props
+  // Debug log for props
   useEffect(() => {
     console.log('[MapUpdater][DEBUG] Props received:', { 
       locationsCount: locations.length,
@@ -42,14 +30,14 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
       isAnimating
     });
   }, [locations, selectedLocation, isAnimating]);
- */
+
   // Handle location selection from clicks
   useEffect(() => {
-    /* console.log('[MapUpdater][DEBUG] selectedLocation effect running', {
+    console.log('[MapUpdater][DEBUG] selectedLocation effect running', {
       hasSelectedLocation: !!selectedLocation,
       isInitialMount: isInitialMount.current,
       isAnimating
-    }); */
+    });
 
     if (!selectedLocation) {
       console.log('[MapUpdater][DEBUG] No selectedLocation, skipping effect');
@@ -105,22 +93,20 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
         }
       ); 
 
-      //console.log('[MapUpdater][DEBUG] Setting timeout to reset isAnimating');
+      console.log('[MapUpdater][DEBUG] Setting timeout to reset isAnimating');
       timeoutRef.current = setTimeout(() => {
         console.log('[MapUpdater][DEBUG] Animation complete, setting isAnimating to false');
         setIsAnimating(false);
       }, 2500);
 
-      console.log('isAnimating',isAnimating);
-
     } catch (error) {
-      //console.error('[MapUpdater][DEBUG] Error flying to location:', error);
+      console.error('[MapUpdater][DEBUG] Error flying to location:', error);
       setIsAnimating(false);
     }
 
     return () => {
       if (timeoutRef.current) {
-        //console.log('[MapUpdater][DEBUG] Cleanup: clearing timeout');
+        console.log('[MapUpdater][DEBUG] Cleanup: clearing timeout');
         clearTimeout(timeoutRef.current);
       }
     };
@@ -131,31 +117,29 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
     updateCount.current += 1;
     const currentUpdate = updateCount.current;
     
-    console.log("use efect called again ",isAnimating);
-
-    /* console.log(`[MapUpdater][DEBUG] Locations effect #${currentUpdate} running`, {
+    console.log(`[MapUpdater][DEBUG] Locations effect #${currentUpdate} running`, {
       locationsCount: locations.length,
       isAnimating,
       hasSelectedLocation: !!selectedLocation
-    }); */
+    });
 
     // Only update if we have locations and no selected location
     if (locations.length === 0) {
-      //console.log(`[MapUpdater][DEBUG] #${currentUpdate} No locations, skipping effect`);
+      console.log(`[MapUpdater][DEBUG] #${currentUpdate} No locations, skipping effect`);
       return;
     }
     
     if (isAnimating && locations.length <= 1) {
-      //console.log(`[MapUpdater][DEBUG] #${currentUpdate} isAnimating is true, skipping effect for single location`);
+      console.log(`[MapUpdater][DEBUG] #${currentUpdate} isAnimating is true, skipping effect for single location`);
       return;
     }
     
     if (isAnimating && locations.length > 1) {
-      //console.log(`[MapUpdater][DEBUG] #${currentUpdate} Animation in progress, but continuing for multiple locations update`);
+      console.log(`[MapUpdater][DEBUG] #${currentUpdate} Animation in progress, but continuing for multiple locations update`);
       
       // If there's an existing animation timeout, clear it
       if (timeoutRef.current) {
-        //console.log(`[MapUpdater][DEBUG] #${currentUpdate} Clearing previous animation timeout`);
+        console.log(`[MapUpdater][DEBUG] #${currentUpdate} Clearing previous animation timeout`);
         clearTimeout(timeoutRef.current);
       }
       
@@ -195,11 +179,11 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
       return;
     }
 
-/*     console.log(`[MapUpdater][DEBUG] #${currentUpdate} Locations changed:`, {
+    console.log(`[MapUpdater][DEBUG] #${currentUpdate} Locations changed:`, {
       prevCount: prevLocationsKey ? JSON.parse(prevLocationsKey).length : 0,
       newCount: JSON.parse(locationsKey).length,
       isIncremental: prevLocationsKey && locationCountChanged
-    }); */
+    });
 
     locationsRef.current = locationsKey;
     console.log(`[MapUpdater][DEBUG] #${currentUpdate} Processing ${locations.length} locations`);
@@ -211,38 +195,38 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
                        isValidCoordinates(loc.position.lat, loc.position.lng);
         
         if (!isValid) {
-          /* console.warn(`[MapUpdater][DEBUG] #${currentUpdate} Invalid location:`, {
+          console.warn(`[MapUpdater][DEBUG] #${currentUpdate} Invalid location:`, {
             name: loc.name,
             position: loc.position
-          }); */
+          });
         }
         return isValid;
       });
 
-      //console.log(`[MapUpdater][DEBUG] #${currentUpdate} Valid locations: ${validLocations.length} of ${locations.length}`);
+      console.log(`[MapUpdater][DEBUG] #${currentUpdate} Valid locations: ${validLocations.length} of ${locations.length}`);
 
       if (validLocations.length === 0) {
-        //console.warn(`[MapUpdater][DEBUG] #${currentUpdate} No valid locations to update`);
+        console.warn(`[MapUpdater][DEBUG] #${currentUpdate} No valid locations to update`);
         return;
       }
 
       // Update city context from first location
       const firstLocation = validLocations[0];
       const cityName = firstLocation.city || extractCityName(firstLocation.name);
-      //console.log(`[MapUpdater][DEBUG] #${currentUpdate} Setting city context to:`, cityName);
+      console.log(`[MapUpdater][DEBUG] #${currentUpdate} Setting city context to:`, cityName);
       cityContext.setCurrentCity(cityName);
       
-      //console.log(`[MapUpdater][DEBUG] #${currentUpdate} Setting isAnimating to true`);
+      console.log(`[MapUpdater][DEBUG] #${currentUpdate} Setting isAnimating to true`);
       setIsAnimating(true);   
 
       if (timeoutRef.current) {
-        //console.log(`[MapUpdater][DEBUG] #${currentUpdate} Clearing existing timeout`);
+        console.log(`[MapUpdater][DEBUG] #${currentUpdate} Clearing existing timeout`);
         clearTimeout(timeoutRef.current);
       }
 
       // IMPORTANT: Always use bounds calculation for multiple locations
       if (validLocations.length > 1) {
-        //console.log(`[MapUpdater][DEBUG] #${currentUpdate} Using bounds for ${validLocations.length} locations`);
+        console.log(`[MapUpdater][DEBUG] #${currentUpdate} Using bounds for ${validLocations.length} locations`);
         
         const bounds = new LatLngBounds(
           validLocations.map(loc => 
@@ -250,15 +234,15 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
           )
         );
 
-/*         console.log(`[MapUpdater][DEBUG] #${currentUpdate} Bounds calculated:`, {
+        console.log(`[MapUpdater][DEBUG] #${currentUpdate} Bounds calculated:`, {
           north: bounds.getNorth(),
           south: bounds.getSouth(),
           east: bounds.getEast(),
           west: bounds.getWest()
-        }); */
+        });
 
         const paddedBounds = bounds.pad(0.2);
-        //console.log(`[MapUpdater][DEBUG] #${currentUpdate} Calling flyToBounds`);
+        console.log(`[MapUpdater][DEBUG] #${currentUpdate} Calling flyToBounds`);
         /* map.flyToBounds(paddedBounds, {
           padding: [10, 10],
           maxZoom: 15,
@@ -279,12 +263,12 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
           easeLinearity: 0.25
         });
 
-        //console.log(`[MapUpdater][DEBUG] #${currentUpdate} flyToBounds with duration:`, isIncrementalUpdate ? 1 : 2);
-        //console.log(`[MapUpdater][DEBUG] #${currentUpdate} Setting timeout to reset isAnimating`);
+        console.log(`[MapUpdater][DEBUG] #${currentUpdate} flyToBounds with duration:`, isIncrementalUpdate ? 1 : 2);
+        console.log(`[MapUpdater][DEBUG] #${currentUpdate} Setting timeout to reset isAnimating`);
         const animationDuration = locationCountChanged && prevLocationsKey ? 1000 : 2500;
         timeoutRef.current = setTimeout(() => {
-          //console.log(`[MapUpdater][DEBUG] #${currentUpdate} Multiple locations animation complete, setting isAnimating to false`);
-          //console.log(`[MapUpdater][DEBUG] #${currentUpdate} Was incremental update:`, locationCountChanged && prevLocationsKey);
+          console.log(`[MapUpdater][DEBUG] #${currentUpdate} Multiple locations animation complete, setting isAnimating to false`);
+          console.log(`[MapUpdater][DEBUG] #${currentUpdate} Was incremental update:`, locationCountChanged && prevLocationsKey);
           setIsAnimating(false);
         }, animationDuration);
         /* timeoutRef.current = setTimeout(() => {
@@ -294,10 +278,10 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
       } else {
         // Single location case
         const location = validLocations[0];
-       /*  console.log(`[MapUpdater][DEBUG] #${currentUpdate} Flying to single location:`, location.name, {
+        console.log(`[MapUpdater][DEBUG] #${currentUpdate} Flying to single location:`, location.name, {
           lat: location.position.lat,
           lng: location.position.lng
-        }); */
+        });
         
         if (timeoutRef.current) {
           clearTimeout(timeoutRef.current);
@@ -312,26 +296,26 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
           }
         );
 
-        //console.log(`[MapUpdater][DEBUG] #${currentUpdate} Setting timeout to reset isAnimating`);
+        console.log(`[MapUpdater][DEBUG] #${currentUpdate} Setting timeout to reset isAnimating`);
         /* timeoutRef.current = setTimeout(() => {
           console.log(`[MapUpdater][DEBUG] #${currentUpdate} Single location animation complete, setting isAnimating to false`);
           setIsAnimating(false);
         }, 2500); */
         // Set a fresh timeout
         timeoutRef.current = setTimeout(() => {
-          //console.log(`[MapUpdater][DEBUG] #${currentUpdate} Multiple locations animation complete, setting isAnimating to false`);
+          console.log(`[MapUpdater][DEBUG] #${currentUpdate} Multiple locations animation complete, setting isAnimating to false`);
           setIsAnimating(false);
         }, 1500); // Shorter timeout for all bounds updates for better responsiveness
       }
 
     } catch (error) {
-      //console.error(`[MapUpdater][DEBUG] #${currentUpdate} Error updating map:`, error);
+      console.error(`[MapUpdater][DEBUG] #${currentUpdate} Error updating map:`, error);
       setIsAnimating(false);
     }
 
     return () => {
       if (timeoutRef.current) {
-        //console.log(`[MapUpdater][DEBUG] #${currentUpdate} Cleanup: clearing timeout`);
+        console.log(`[MapUpdater][DEBUG] #${currentUpdate} Cleanup: clearing timeout`);
         clearTimeout(timeoutRef.current);
       }
     };

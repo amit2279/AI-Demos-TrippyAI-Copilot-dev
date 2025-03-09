@@ -1,4 +1,4 @@
-import React, { useRef, useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LocationSearch } from './LocationSearch';
 import { DateRangePicker } from './DateRangePicker';
@@ -6,12 +6,10 @@ import { InterestSelector } from './InterestSelector';
 import { TravelGroupSelector } from './TravelGroupSelector';
 import { TripDetails, ActivityType, TravelGroup, Itinerary } from '../../types/itinerary';
 import { X, Plane, Calendar } from 'lucide-react';
-import { ItineraryPanel } from './ItineraryPanel'; 
-import { PersonalizedPlannerPanel } from './PersonalizedPlannerPanel'; // Import the new component
-import { generateItinerary } from '../../services/itinerary/builder';
+import { ItineraryPanel } from './ItineraryPanel'; // Import the original ItineraryPanel
+import { generateItinerary } from '../../services/itinerary/builder'; // Import the itinerary builder
 
-
-/* interface PlannerWizardProps {
+interface PlannerWizardProps {
   onClose?: () => void;
   onSubmit: (details: TripDetails) => void;
   isLoading?: boolean;
@@ -27,25 +25,9 @@ import { generateItinerary } from '../../services/itinerary/builder';
   // New props for better control flow
   isGeneratingItinerary?: boolean;
   shouldShowResults?: boolean;
-} */
-
-interface PlannerWizardProps {
-  onSubmit: (details: TripDetails) => void;
-  isLoading: boolean;
-  error: string | null;
-  itinerary: Partial<Itinerary>;
-  onLocationSelect: (locationId: string) => void;
-  selectedLocationId?: string;
-  onLocationsUpdate?: (locations: any[]) => void;
-  streamingActivity?: boolean;
-  onItineraryUpdate?: (itinerary: Partial<Itinerary>, streamingActivity?: boolean) => void;
-  isGeneratingItinerary: boolean;
-  shouldShowResults: boolean;
-  className?: string;
 }
 
-// Extend the WizardStep type to include personalized planning
-type WizardStep = 'initial' | 'details' | 'results' | 'personalized';
+type WizardStep = 'initial' | 'details' | 'results';
 
 export function PlannerWizard({ 
   onClose, 
@@ -56,7 +38,7 @@ export function PlannerWizard({
   itinerary = {},
   onLocationSelect,
   selectedLocationId,
-  onLocationsUpdate, // Receive this prop
+  onLocationsUpdate,
   streamingActivity = false,
   activeDay,
   className,
@@ -64,7 +46,6 @@ export function PlannerWizard({
   // New control props
   isGeneratingItinerary = false,
   shouldShowResults = false
-
 }: PlannerWizardProps & { className?: string }) {
   console.log('[PlannerWizard] Rendering with props', {
     hasItineraryData: !!itinerary?.tripDetails?.destination,
@@ -72,9 +53,6 @@ export function PlannerWizard({
     isGeneratingItinerary,
     shouldShowResults
   });
-
-  const itineraryRef = useRef(itinerary);
-  const selectedLocationIdRef = useRef(selectedLocationId);
   
   const [step, setStep] = useState<WizardStep>('initial');
   const [formData, setFormData] = useState<{
@@ -98,16 +76,6 @@ export function PlannerWizard({
   // Effect to auto-transition to results view when:
   // 1. Either the form was submitted OR shouldShowResults is true
   // 2. AND we have actual itinerary data
-
-  // Update refs when props change, but don't trigger rerenders
-  useEffect(() => {
-    itineraryRef.current = itinerary;
-  }, [itinerary]);
-
-  useEffect(() => {
-    selectedLocationIdRef.current = selectedLocationId;
-  }, [selectedLocationId]);
-
   useEffect(() => {
     const hasItineraryData = !!itinerary?.tripDetails?.destination;
     const shouldTransition = (formSubmitted || shouldShowResults) && hasItineraryData;
@@ -130,91 +98,6 @@ export function PlannerWizard({
       }, 300);
     }
   }, [formSubmitted, shouldShowResults, itinerary?.tripDetails?.destination, step]);
-
-  // State to track if locations have been processed
-  const [locationsProcessed, setLocationsProcessed] = useState(false);
-    
-  // Store processed locations to prevent unnecessary updates
-  const processedLocationsRef = useRef<any[]>([]);
-
-  // Memoize the onLocationsUpdate handler to prevent unnecessary re-renders
-  /* const handleLocationsUpdate = React.useCallback((locations: any[]) => {
-    // Only forward location updates if they're different from what we've seen before
-    // or if we haven't processed locations yet
-    if (!locationsProcessed || 
-        JSON.stringify(locations) !== JSON.stringify(processedLocationsRef.current)) {
-      processedLocationsRef.current = locations;
-      
-      if (onLocationsUpdate) {
-        console.log("[PlannerWizard] Forwarding locations update:", locations.length);
-        onLocationsUpdate(locations);
-        setLocationsProcessed(true);
-      }
-    } else {
-      console.log("[PlannerWizard] Skipping duplicate locations update");
-    }
-  }, [onLocationsUpdate, locationsProcessed]); */
-  
-  // Memoize the onLocationSelect handler
-  /* const handleLocationSelect = React.useCallback((locationId: string) => {
-    // Only forward selection if it's different from current selection
-    if (locationId !== selectedLocationIdRef.current) {
-      console.log("[PlannerWizard] Forwarding location selection:", locationId);
-      onLocationSelect(locationId);
-    }
-  }, [onLocationSelect]); */
-  const handleLocationSelect = React.useCallback((locationId: string) => {
-    onLocationSelect(locationId);
-  }, [onLocationSelect]);
-
-  const handleLocationsUpdate = React.useCallback((locations: any[]) => {
-    if (onLocationsUpdate) {
-      onLocationsUpdate(locations);
-    }
-  }, [onLocationsUpdate]);
-
-  // Handle trip details update with memoization
-  /* const handleTripDetailsUpdate = React.useCallback((details: any) => {
-    // Only update if these details are different from current itinerary
-    if (itineraryRef.current?.tripDetails?.destination !== details.destination ||
-        itineraryRef.current?.tripDetails?.startDate !== details.startDate ||
-        itineraryRef.current?.tripDetails?.endDate !== details.endDate) {
-      
-      if (onItineraryUpdate) {
-        const updatedItinerary = {
-          ...itineraryRef.current,
-          tripDetails: {
-            ...itineraryRef.current?.tripDetails,
-            ...details
-          }
-        };
-        
-        console.log("[PlannerWizard] Updating trip details");
-        onItineraryUpdate(updatedItinerary, false);
-      }
-    }
-  }, [onItineraryUpdate]);   */
-  const handleTripDetailsUpdate = React.useCallback((details: any) => {
-    if (onItineraryUpdate) {
-      const updatedItinerary = {
-        ...itinerary,
-        tripDetails: {
-          ...itinerary.tripDetails,
-          ...details
-        }
-      };
-      onItineraryUpdate(updatedItinerary, false);
-    }
-  }, [itinerary, onItineraryUpdate]);
-
-  // Reset the locations processed flag when the itinerary changes significantly
-  useEffect(() => {
-    if (itinerary?.tripDetails?.destination !== itineraryRef.current?.tripDetails?.destination) {
-      console.log("[PlannerWizard] Destination changed, resetting locations processed flag");
-      setLocationsProcessed(false);
-      processedLocationsRef.current = [];
-    }
-  }, [itinerary?.tripDetails?.destination]);
 
   // Validate form data
   const isValid = useMemo(() => {
@@ -261,8 +144,10 @@ export function PlannerWizard({
     switch (step) {
       case 'initial': return "Let's plan your trip";
       case 'details': return "Let's plan your trip";
-      case 'personalized': return "Create your personalized plan";
-      case 'results': return "Your Itinerary";
+      case 'results': return "Your Itinerary"
+      /* itinerary?.tripDetails?.destination 
+        ? `Your Trip to ${itinerary.tripDetails.destination}`
+        : 'Your Itinerary'; */
       default: return 'Plan Your Trip';
     }
   };
@@ -306,10 +191,10 @@ export function PlannerWizard({
                 </div>
 
                 <div className="space-y-4 mt-3">
-                  {/* <button
+                  <button
                     onClick={() => {
-                      console.log('[PlannerWizard] Moving to personalized step');
-                      setStep('personalized');
+                      console.log('[PlannerWizard] Moving to details step');
+                      setStep('details');
                     }}
                     className="w-full flex items-center gap-4 p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors group shadow-sm"
                   >
@@ -322,9 +207,9 @@ export function PlannerWizard({
                         Plan a trip from scratch
                       </p>
                     </div>
-                  </button> */}
+                  </button>
 
-                  {<button
+                  <button
                     onClick={() => {
                       console.log('[PlannerWizard] Moving to details step');
                       setStep('details');
@@ -340,41 +225,7 @@ export function PlannerWizard({
                         Get an AI Powered travel plan
                       </p>
                     </div>
-                  </button> }
-                  <button
-                    onClick={() => {
-                      console.log('[PlannerWizard] Moving to personalized step');
-                      setStep('personalized');
-                    }}
-                    className="w-full flex items-center gap-4 p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors group shadow-sm"
-                  >
-                    <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-                      <Plane className="w-6 h-6 text-blue-600" />
-                    </div>
-                    <div className="flex-1 text-left">
-                      <h4 className="font-medium text-gray-900">Create my plan</h4>
-                      <p className="text-sm text-gray-500">
-                        Plan a trip from scratch
-                      </p>
-                    </div>
                   </button>
-                  {/* <button
-                    onClick={() => {
-                      console.log('[PlannerWizard] Moving to personalized step');
-                      setStep('personalized');
-                    }}
-                    className="w-full flex items-center gap-4 p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors group shadow-sm"
-                  >
-                    <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-                      <Plane className="w-6 h-6 text-blue-600" />
-                    </div>
-                    <div className="flex-1 text-left">
-                      <h4 className="font-medium text-gray-900">Create my plan</h4>
-                      <p className="text-sm text-gray-500">
-                        Plan a trip from scratch
-                      </p>
-                    </div>
-                  </button> */}
                 </div>
               </div>
             </motion.div>
@@ -468,72 +319,6 @@ export function PlannerWizard({
                   </button>
                 </div>
               </div>
-            </motion.div>
-          )}
-          
-          {/* Personalized Planning Step */}
-          {/* {step === 'personalized' && (
-            <motion.div 
-              key="personalized"
-              className="absolute inset-0"
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ type: 'tween', ease: 'easeInOut', duration: 0.3 }}
-            >
-              <PersonalizedPlannerPanel 
-                isVisible={true}
-                onLocationSelect={onLocationSelect}
-                selectedLocationId={selectedLocationId}
-                tripDetails={itinerary?.tripDetails}
-                onTripDetailsUpdate={(details) => {
-                  // Handle updating trip details if needed
-                  console.log('[PlannerWizard] Trip details updated from personalized planner:', details);
-                }}
-              />
-            </motion.div>
-          )} */}
-          {step === 'personalized' && (
-            <motion.div 
-              key="personalized"
-              className="absolute inset-0"
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ type: 'tween', ease: 'easeInOut', duration: 0.3 }}
-            >
-              <PersonalizedPlannerPanel 
-                isVisible={true}
-                onToggleVisibility={() => {}}
-                onLocationSelect={handleLocationSelect}
-                selectedLocationId={selectedLocationId}
-                tripDetails={itinerary.tripDetails}
-                onTripDetailsUpdate={handleTripDetailsUpdate}
-                onLocationsUpdate={handleLocationsUpdate}
-              />
-            {/* <PersonalizedPlannerPanel 
-                isVisible={true}
-                onToggleVisibility={() => {}}
-                onLocationSelect={onLocationSelect}
-                selectedLocationId={selectedLocationId}
-                tripDetails={itinerary.tripDetails}
-                onTripDetailsUpdate={(details) => {
-                  // Handle trip details update
-                }}
-                onLocationsUpdate={onLocationsUpdate} // Pass this through
-              /> */}
-              {/* <PersonalizedPlannerPanel 
-                isVisible={true}
-                onLocationSelect={onLocationSelect}
-                selectedLocationId={selectedLocationId}
-                tripDetails={itinerary?.tripDetails}
-                onTripDetailsUpdate={(details) => {
-                  // Handle updating trip details
-                  console.log('[PlannerWizard] Trip details updated from personalized planner:', details);
-                  // You might want to call onSubmit or another handler here
-                }}
-                onLocationsUpdate={onLocationsUpdate} // Make sure to pass this prop
-              /> */}
             </motion.div>
           )}
           

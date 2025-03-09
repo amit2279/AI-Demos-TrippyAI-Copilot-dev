@@ -81,7 +81,7 @@ export function ItineraryPanel({
     
     // Start generating itinerary
     console.log("Starting itinerary generation with generateItinerary");
-    generateItinerary(details, (partialItinerary, isStreaming) => {
+/*     generateItinerary(details, (partialItinerary, isStreaming) => {
       console.log("Received partial itinerary update:", partialItinerary);
       console.log("Is streaming:", isStreaming);
       console.log("Days in partial update:", partialItinerary.days?.length);
@@ -110,6 +110,50 @@ export function ItineraryPanel({
       setTripPlannerError('Failed to generate itinerary. Please try again.');
     }).finally(() => {
       setIsGeneratingItinerary(false);
+    }); */
+    // Inside generateItinerary callback in ItineraryPanel_minimal.tsx
+    generateItinerary(details, (partialItinerary, isStreaming) => {
+      console.log("[ItineraryPanel][DEBUG] Received partial itinerary update:", {
+        hasDestination: !!partialItinerary.tripDetails?.destination,
+        daysCount: partialItinerary.days?.length || 0,
+        isStreaming
+      });
+      
+      // Update local state
+      setCurrentItinerary(partialItinerary);
+      
+      // Forward all updates to parent component
+      if (onItineraryUpdate) {
+        console.log("[ItineraryPanel][DEBUG] Forwarding update to parent");
+        onItineraryUpdate(partialItinerary, isStreaming);
+      }
+      
+      // Update map locations when activities are available
+      if (onLocationsUpdate && partialItinerary.days) {
+        const allLocations = partialItinerary.days.flatMap(day => 
+          day.activities?.map(activity => activity.location) || []
+        );
+        
+        console.log("[ItineraryPanel][DEBUG] Extracted", allLocations.length, "locations from itinerary");
+        
+        if (allLocations.length > 0) {
+          // Log some details about first location to help diagnose any issues
+          console.log("[ItineraryPanel][DEBUG] First location sample:", {
+            id: allLocations[0].id,
+            name: allLocations[0].name,
+            hasPosition: !!allLocations[0].position,
+            position: allLocations[0].position
+          });
+          
+          console.log("[ItineraryPanel][DEBUG] Calling onLocationsUpdate with", allLocations.length, "locations");
+          onLocationsUpdate(allLocations);
+        }
+      }
+    }).catch(error => {
+      console.error('[ItineraryPanel][DEBUG] Error generating itinerary:', error);
+      setTripPlannerError('Failed to generate itinerary. Please try again.');
+    }).finally(() => {
+      setIsGeneratingItinerary(false);
     });
   };
 
@@ -117,7 +161,29 @@ export function ItineraryPanel({
   
   // Always render PlannerWizard
   return (
-    <div 
+    <div className={styles.container}>
+    <PlannerWizard 
+      onSubmit={handleTripPlannerSubmit}
+      isLoading={isGeneratingItinerary}
+      error={tripPlannerError}
+      itinerary={currentItinerary}
+      onLocationSelect={onLocationSelect}
+      selectedLocationId={selectedLocationId}
+      streamingActivity={streamingActivity}
+      onItineraryUpdate={onItineraryUpdate}
+      // Make sure to pass onLocationsUpdate to PlannerWizard
+      onLocationsUpdate={onLocationsUpdate}
+      // We explicitly set that we're generating an itinerary to help PlannerWizard know when
+      // to transition to results view
+      isGeneratingItinerary={isGeneratingItinerary}
+      // Pass a flag to indicate if we should auto-transition
+      shouldShowResults={!!currentItinerary.tripDetails?.destination}
+    />
+  </div>
+  );
+}
+
+/* <div 
      className={styles.container}>
       <PlannerWizard 
         onSubmit={handleTripPlannerSubmit}
@@ -134,6 +200,4 @@ export function ItineraryPanel({
         // Pass a flag to indicate if we should auto-transition
         shouldShowResults={!!currentItinerary.tripDetails?.destination}
       />
-    </div>
-  );
-}
+    </div> */

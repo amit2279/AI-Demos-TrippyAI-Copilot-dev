@@ -677,3 +677,4 @@ import { TripDetails, Itinerary } from '../../types/itinerary';
     - Sort activities by start time
     - Include realistic travel times between locations`;
   }
+  

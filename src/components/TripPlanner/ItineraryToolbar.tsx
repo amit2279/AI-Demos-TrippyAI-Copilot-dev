@@ -479,7 +479,7 @@ ${events}END:VCALENDAR`;
           <img 
             src="/assets/icons/google-calendar.svg" 
             alt="Google Calendar" 
-            className="w-5 h-5"
+            className="w-6 h-6"
             onError={(e) => {/* fallback */}}
           />
         </button>
@@ -492,7 +492,7 @@ ${events}END:VCALENDAR`;
           <img 
             src="/assets/icons/apple-calendar.svg" 
             alt="Apple Calendar" 
-            className="w-5 h-5"
+            className="w-6 h-6"
             onError={(e) => {/* fallback */}}
           />
         </button>
@@ -503,7 +503,7 @@ ${events}END:VCALENDAR`;
         onClick={downloadItinerary}
         title="Download Itinerary"
         className="p-2 flex items-center justify-center bg-white hover:bg-gray-50 border border-gray-200 rounded-md shadow-sm">
-        <Download size={24} className="text-gray-600" />
+        <Download size={22} className="text-gray-600" />
     </button>
     </div>
   </div>
