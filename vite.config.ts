@@ -30,6 +30,9 @@ export default defineConfig({
     }
   },
   build: {
+    rollupOptions: {
+      external: ['zwitch']
+    },
     outDir: 'dist',
     sourcemap: true
   },
