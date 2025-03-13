@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, ChevronLeft, ChevronRight, Star, MapPin } from 'lucide-react';
 import { Location } from '../types/chat';
 import { findPlace } from '../services/places';
@@ -21,7 +21,6 @@ export const MapInfoCard: React.FC<MapInfoCardProps> = ({
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [currentImage, setCurrentImage] = useState<string>('');
-  const cardRef = useRef<HTMLDivElement>(null);
 
   // Set initial image when images array changes
   useEffect(() => {
@@ -95,25 +94,22 @@ export const MapInfoCard: React.FC<MapInfoCardProps> = ({
 
   return (
     <div 
-        ref={cardRef}
-        className="absolute z-[1000] shadow-xl pointer-events-auto"
-        style={{ 
-          left: markerPosition ? `${markerPosition.x}px` : '100%',
-          top: markerPosition ? `${markerPosition.y}px` : '100%',
-          // Center horizontally and position above the marker
-          transform: 'translate(-50%, -120%)',
-          opacity: isVisible ? 1 : 0,
-          // Change the transform origin to the bottom center (where the triangle pointer is)
-          transformOrigin: 'bottom center',
-          scale: isVisible ? '1' : '1',
-          transition: 'left 0.15s ease-out, top 0.15s ease-out, opacity 0.15s, scale 0.15s',
-          pointerEvents: isClosing ? 'none' : 'auto',
-        }}
-      >
+      className={`fixed z-[1000] shadow-xl transition-all duration-150
+        ${isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}
+        ${isClosing ? 'pointer-events-none' : 'pointer-events-auto'}`}
+      style={{ 
+        left: markerPosition ? markerPosition.x : '50%',
+        top: markerPosition ? markerPosition.y - 12 : '50%',
+        transform: markerPosition 
+          ? 'translate(-50%, -100%)' 
+          : 'translate(-50%, -50%)',
+        marginTop: '-12px' // Offset for pointer
+      }}
+    >
       {/* Card Content */}
       <div className="bg-white rounded-lg overflow-hidden w-[320px]">
-        {/* Image Carousel */}
-        <div className="relative h-[320px] bg-gray-100">
+      {/* // Change the image container height from h-[180px] to h-[320px] to match the width */}
+        <div className="relative h-[260px] bg-gray-100">
           {/* Loading placeholder */}
           <div 
             className={`absolute inset-0 bg-gray-200 flex items-center justify-center transition-opacity duration-300 ${
@@ -212,9 +208,9 @@ export const MapInfoCard: React.FC<MapInfoCardProps> = ({
 
       {/* Triangle Pointer */}
       <div 
-          className="w-4 h-4 bg-white rotate-45 absolute left-1/2 -bottom-2 transform -translate-x-1/2"
-          style={{ boxShadow: '2px 2px 4px rgba(0,0,0,0.1)' }}
-        />
-      </div>
+        className="w-4 h-4 bg-white rotate-45 absolute left-1/2 -bottom-2 transform -translate-x-1/2"
+        style={{ boxShadow: '2px 2px 4px rgba(0,0,0,0.1)' }}
+      />
+    </div>
   );
 };

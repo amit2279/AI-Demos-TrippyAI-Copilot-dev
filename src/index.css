@@ -79,16 +79,6 @@
   z-index: 1;
 }
 
-.leaflet-popup-content-wrapper {
-  padding: 0;
-  overflow: hidden;
-}
-
-.leaflet-popup-content {
-  margin: 0;
-  padding: 12px;
-}
-
 .selected-marker {
   filter: hue-rotate(200deg);
   transform-origin: bottom center;
@@ -106,4 +96,83 @@
 
 .react-resizable:hover .react-resizable-handle {
   opacity: 1;
+}
+
+/* Custom popup styles */
+.custom-popup .leaflet-popup-close-button {
+  display: none;
+}
+
+.custom-popup .leaflet-popup-content-wrapper {
+  padding: 0;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.custom-popup .leaflet-popup-content {
+  margin: 0;
+  width: 280px !important;
+  padding: 0;
+}
+
+.custom-popup .leaflet-popup-tip {
+  width: 16px;
+  height: 16px;
+  background-color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: opacity 0.15s ease;
+}
+
+.custom-popup .leaflet-popup-tip-container {
+  margin-top: -1px;
+  width: 30px;
+  height: 15px;
+}
+
+/* Custom popup styling */
+.custom-location-popup .leaflet-popup-content-wrapper {
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.custom-location-popup .leaflet-popup-content {
+  margin: 0;
+  width: 320px !important;
+  padding: 0;
+}
+
+.custom-location-popup .leaflet-popup-tip {
+  width: 16px;
+  height: 16px;
+  background-color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: opacity 0.15s ease;
+}
+
+.custom-location-popup .leaflet-popup-tip-container {
+  margin-top: -1px;
+}
+
+/* Image loading placeholder */
+.location-popup .image-placeholder {
+  background: linear-gradient(90deg, #f0f0f0 0%, #f8f8f8 50%, #f0f0f0 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Text truncation */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }

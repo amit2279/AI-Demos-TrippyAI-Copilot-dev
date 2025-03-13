@@ -16,6 +16,8 @@ import { ItineraryPanel } from './components/TripPlanner/ItineraryPanel_minimal'
 import { AuthOverlay } from './components/Auth/AuthOverlay';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { resetSeenMarkers } from './utils/markerUtils';
+// In App.tsx, add this import at the top with your other imports
+import { SentryErrorBoundary } from './sentry';
 
 
 // Add Sentry and PostHog
@@ -35,7 +37,7 @@ if (import.meta.env.VITE_POSTHOG_KEY) {
   });
 } */
 
-  // Initialize Sentry
+  /* // Initialize Sentry
   if (import.meta.env.VITE_SENTRY_DSN) {
     Sentry.init({
       dsn: import.meta.env.VITE_SENTRY_DSN,
@@ -130,7 +132,7 @@ if (import.meta.env.VITE_POSTHOG_KEY) {
     } else {
       devToolsOpened = false;
     }
-  }, 1000);
+  }, 1000); */
 
 export default function App() {
 
@@ -205,7 +207,9 @@ export default function App() {
 
   console.log('[App.tsx] -- selectedLocation ----- ', selectedLocation);
 
-
+  const testSentry = () => {
+    throw new Error("This is a test error for Sentry");
+  };
 
 /*   // Handle successful authentication
   const handleAuthSuccess = useCallback(() => {
@@ -707,142 +711,144 @@ export default function App() {
   }, []);
 
   return (
-    <div className="relative">
-      {/* Main App */}
-      <div className="flex h-screen overflow-hidden">
-        {/* Left Panel - Chat */}
-        <div className="w-[400px] flex-shrink-0 bg-white z-40 relative shadow-xl">
-          <ChatPanel
-            messages={messages}
-            onSendMessage={handleSendMessage}
-            isLoading={isLoading}
-            onLocationsUpdate={handleLocationsUpdate}
-            onLocationSelect={handleLocationSelect}
-            streamingMessage={currentStreamingMessage}
-            selectedLocation={selectedLocation}
-            error={error}
-            weatherLocation={currentWeatherLocation}
-            onImageSearch={handleImageSearch}
-            isProcessingImages={isProcessingImages}
-            onItineraryUpdate={handleItineraryUpdate}
-          />
-        </div>
-        
-        {/* Center Panel - Map */}
-        <div className="flex-1 relative">
-          <div className="absolute top-4 right-4 z-40">
-            <MapToggle view={mapView} onToggle={setMapView} />
+    <SentryErrorBoundary fallback={<div>An error has occurred</div>}>
+      <div className="relative">
+        {/* Main App */}
+        <div className="flex h-screen overflow-hidden">
+          {/* Left Panel - Chat */}
+          <div className="w-[400px] flex-shrink-0 bg-white z-40 relative shadow-xl">
+            <ChatPanel
+              messages={messages}
+              onSendMessage={handleSendMessage}
+              isLoading={isLoading}
+              onLocationsUpdate={handleLocationsUpdate}
+              onLocationSelect={handleLocationSelect}
+              streamingMessage={currentStreamingMessage}
+              selectedLocation={selectedLocation}
+              error={error}
+              weatherLocation={currentWeatherLocation}
+              onImageSearch={handleImageSearch}
+              isProcessingImages={isProcessingImages}
+              onItineraryUpdate={handleItineraryUpdate}
+            />
           </div>
-          <MapPanel
-            view={mapView}
-            locations={locations}
-            onLocationSelect={handleLocationSelect}
-            isLoading={isLoading}
-            isStreaming={isStreaming}
-            selectedLocation={selectedLocation}
-            isProcessingLocation={isProcessingImages}
-          />
-        </div>
-  
-        {/* // Add this to your App.tsx */}
-        {/* Itinerary Panel */}
-        {(showItinerary || isPanelAnimating) && currentItinerary && (
-        <div 
-          className="w-[500px] flex-shrink-0 bg-white shadow-lg overflow-y-auto transform transition-all duration-500 ease-out absolute top-0 bottom-0 z-30"
-          style={{
-            left: '400px',
-            transform: `translateX(${showItinerary ? '0' : '-500px'})`,
-            opacity: showItinerary ? 1 : 1,
-            visibility: isPanelAnimating || showItinerary ? 'visible' : 'hidden'
-          }}
-          onTransitionEnd={handleTransitionEnd}
-        >
-          <button 
-            onClick={closeItinerary}
-            className="absolute top-4 right-4 z-50 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white/90 transition-colors shadow-md"
-            aria-label="Close itinerary"
-          >
-            <X size={20} className="text-gray-600" />
-          </button>
           
-          <ItineraryPanel
-            itinerary={currentItinerary}
-            onLocationSelect={(locationId) => {
-              const location = locations.find(loc => loc.id === locationId);
-              if (location) {
-                handleLocationSelect(location);
-              }
+          {/* Center Panel - Map */}
+          <div className="flex-1 relative">
+            <div className="absolute top-4 right-4 z-40">
+              <MapToggle view={mapView} onToggle={setMapView} />
+            </div>
+            <MapPanel
+              view={mapView}
+              locations={locations}
+              onLocationSelect={handleLocationSelect}
+              isLoading={isLoading}
+              isStreaming={isStreaming}
+              selectedLocation={selectedLocation}
+              isProcessingLocation={isProcessingImages}
+            />
+          </div>
+    
+          {/* // Add this to your App.tsx */}
+          {/* Itinerary Panel */}
+          {(showItinerary || isPanelAnimating) && currentItinerary && (
+          <div 
+            className="w-[500px] flex-shrink-0 bg-white shadow-lg overflow-y-auto transform transition-all duration-500 ease-out absolute top-0 bottom-0 z-30"
+            style={{
+              left: '400px',
+              transform: `translateX(${showItinerary ? '0' : '-500px'})`,
+              opacity: showItinerary ? 1 : 1,
+              visibility: isPanelAnimating || showItinerary ? 'visible' : 'hidden'
             }}
-            selectedLocationId={selectedLocation?.id}
-            onLocationsUpdate={handleLocationsUpdate}
-            streamingActivity={streamingActivity}
-          />
-        </div>
-      )}
-        {/* {(showItinerary || isPanelAnimating) && currentItinerary && (
-          <>
-            <div 
-              className="absolute z-50 transition-all duration-200 ease-out"
-              style={{
-                left: showItineraryPanel ? 'calc(400px + 520px)' : '420px',
-                top: '1rem', // Same vertical position as close button
-              }}
+            onTransitionEnd={handleTransitionEnd}
+          >
+            <button 
+              onClick={closeItinerary}
+              className="absolute top-4 right-4 z-50 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white/90 transition-colors shadow-md"
+              aria-label="Close itinerary"
             >
-              <button
-                onClick={toggleItineraryPanel}
-                className="flex items-center justify-center bg-white rounded-r-md shadow-md border border-gray-200 border-l-0 w-8 h-10 hover:bg-gray-50 transition-colors"
+              <X size={20} className="text-gray-600" />
+            </button>
+            
+            <ItineraryPanel
+              itinerary={currentItinerary}
+              onLocationSelect={(locationId) => {
+                const location = locations.find(loc => loc.id === locationId);
+                if (location) {
+                  handleLocationSelect(location);
+                }
+              }}
+              selectedLocationId={selectedLocation?.id}
+              onLocationsUpdate={handleLocationsUpdate}
+              streamingActivity={streamingActivity}
+            />
+          </div>
+        )}
+          {/* {(showItinerary || isPanelAnimating) && currentItinerary && (
+            <>
+              <div 
+                className="absolute z-50 transition-all duration-200 ease-out"
                 style={{
-                  boxShadow: '2px 0 4px rgba(0, 0, 0, 0.1)'
+                  left: showItineraryPanel ? 'calc(400px + 520px)' : '420px',
+                  top: '1rem', // Same vertical position as close button
                 }}
-                aria-label={showItineraryPanel ? "Hide itinerary" : "Show itinerary"}
               >
-                {showItineraryPanel ? (
-                  <ChevronLeft size={18} className="text-gray-600" />
-                ) : (
-                  <ChevronRight size={18} className="text-gray-600" />
-                )}
-              </button>
-            </div>
+                <button
+                  onClick={toggleItineraryPanel}
+                  className="flex items-center justify-center bg-white rounded-r-md shadow-md border border-gray-200 border-l-0 w-8 h-10 hover:bg-gray-50 transition-colors"
+                  style={{
+                    boxShadow: '2px 0 4px rgba(0, 0, 0, 0.1)'
+                  }}
+                  aria-label={showItineraryPanel ? "Hide itinerary" : "Show itinerary"}
+                >
+                  {showItineraryPanel ? (
+                    <ChevronLeft size={18} className="text-gray-600" />
+                  ) : (
+                    <ChevronRight size={18} className="text-gray-600" />
+                  )}
+                </button>
+              </div>
 
-            <div 
-              className="w-[520px] flex-shrink-0 bg-white shadow-lg overflow-y-auto absolute top-0 bottom-0 z-30 transition-transform duration-200 ease-out"
-              style={{
-                left: '400px',
-                transform: `translateX(${showItineraryPanel ? '0' : '-500px'})`,
-                visibility: isPanelAnimating || showItinerary ? 'visible' : 'hidden'
-              }}
-              onTransitionEnd={handleTransitionEnd}
-            >
-             { <button 
-                onClick={closeItinerary}
-                className="absolute top-4 right-4 z-50 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white/90 transition-colors shadow-md transition-transform duration-200 ease-out"
-                aria-label="Close itinerary"
-              >
-                <X size={20} className="text-gray-600" />
-              </button>}
-              
-              <ItineraryPanel
-                itinerary={currentItinerary}
-                onLocationSelect={(locationId) => {
-                  const location = locations.find(loc => loc.id === locationId);
-                  if (location) {
-                    handleLocationSelect(location);
-                  }
+              <div 
+                className="w-[520px] flex-shrink-0 bg-white shadow-lg overflow-y-auto absolute top-0 bottom-0 z-30 transition-transform duration-200 ease-out"
+                style={{
+                  left: '400px',
+                  transform: `translateX(${showItineraryPanel ? '0' : '-500px'})`,
+                  visibility: isPanelAnimating || showItinerary ? 'visible' : 'hidden'
                 }}
-                selectedLocationId={selectedLocation?.id}
-                onLocationsUpdate={handleLocationsUpdate}
-                streamingActivity={streamingActivity}
-              />
-            </div>
-          </>
-        )} */}
-      </div>
+                onTransitionEnd={handleTransitionEnd}
+              >
+              { <button 
+                  onClick={closeItinerary}
+                  className="absolute top-4 right-4 z-50 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white/90 transition-colors shadow-md transition-transform duration-200 ease-out"
+                  aria-label="Close itinerary"
+                >
+                  <X size={20} className="text-gray-600" />
+                </button>}
+                
+                <ItineraryPanel
+                  itinerary={currentItinerary}
+                  onLocationSelect={(locationId) => {
+                    const location = locations.find(loc => loc.id === locationId);
+                    if (location) {
+                      handleLocationSelect(location);
+                    }
+                  }}
+                  selectedLocationId={selectedLocation?.id}
+                  onLocationsUpdate={handleLocationsUpdate}
+                  streamingActivity={streamingActivity}
+                />
+              </div>
+            </>
+          )} */}
+        </div>
       
       {/* Auth Overlay */}
       { <AuthOverlay 
         isAuthenticated={isAuthenticated} 
         onSuccess={handleAuthSuccess}
       /> }
-  </div>
+      </div>
+    </SentryErrorBoundary>
   );
 }

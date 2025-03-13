@@ -95,8 +95,37 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
+      // Get current center and calculate distance
+      const center = map.getCenter();
+      const destination = [selectedLocation.position.lat, selectedLocation.position.lng];
+      const distance = Math.sqrt(
+        Math.pow(center.lat - selectedLocation.position.lat, 2) + 
+        Math.pow(center.lng - selectedLocation.position.lng, 2)
+      );
+      
+      // Calculate duration based on distance (min 0.5s, max 2s)
+      const duration = Math.min(Math.max(distance * 5, 0.5), 2);
       
       map.flyTo(
+        destination,
+        16,
+        {
+          duration: duration,
+          easeLinearity: 0.25
+        }
+      ); 
+
+      // Set timeout based on calculated duration
+      timeoutRef.current = setTimeout(() => {
+        console.log('[MapUpdater][DEBUG] Animation complete, setting isAnimating to false');
+        setIsAnimating(false);
+      }, duration * 1000 + 500); // Add 500ms buffer for the animation to complete
+
+      console.log('isAnimating', isAnimating);
+    } catch (error) {
+      setIsAnimating(false);
+    }
+      /* map.flyTo(
         [selectedLocation.position.lat, selectedLocation.position.lng],
         16,
         {
@@ -116,7 +145,7 @@ export const MapUpdater: React.FC<MapUpdaterProps> = ({
     } catch (error) {
       //console.error('[MapUpdater][DEBUG] Error flying to location:', error);
       setIsAnimating(false);
-    }
+    } */
 
     return () => {
       if (timeoutRef.current) {

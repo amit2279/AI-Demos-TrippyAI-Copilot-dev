@@ -1,6 +1,9 @@
+import api from './api';
 import { Location } from '../types/chat';
 import { Loader } from '@googlemaps/js-api-loader';
 import { GOOGLE_MAPS_CONFIG } from '../config/maps';
+import axios from 'axios';
+
 
 let mapsLoader: Loader | null = null;
 let placesService: google.maps.places.PlacesService | null = null;
@@ -32,6 +35,13 @@ async function initPlacesService() {
   }
   return placesService;
 }
+
+/* export async function findPlace(location: Location): Promise<string> {
+  // Generate a Google Maps URL
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+    location.name
+  )}`;
+} */
 
 export async function findPlace(location: Location): Promise<string> {
   try {
@@ -153,6 +163,301 @@ export async function findPlace(location: Location): Promise<string> {
   }
 }
 
+/* export async function getPlacePhotos(location: Location): Promise<string[]> {
+  const cacheKey = `photos_${location.id}`;
+  // Check cache first
+  const cached = placeCache.get(cacheKey);
+  if (cached && cached.photos && (Date.now() - cached.timestamp < CACHE_DURATION)) {
+    return cached.photos;
+  }
+
+  try {
+    // This requires a DOM element, can be any div
+    const placesDiv = document.createElement('div');
+    const placesService = new google.maps.places.PlacesService(placesDiv);
+    
+    // Create a Promise wrapper around the async API
+    const photos = await new Promise<string[]>((resolve, reject) => {
+      placesService.findPlaceFromQuery({
+        query: location.name,
+        fields: ['photos', 'place_id']
+      }, (results, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK && results && results.length > 0) {
+          // If we have a place_id, get details to get more photos
+          if (results[0].place_id) {
+            placesService.getDetails({
+              placeId: results[0].place_id,
+              fields: ['photos']
+            }, (place, detailsStatus) => {
+              if (detailsStatus === google.maps.places.PlacesServiceStatus.OK && place && place.photos) {
+                // Convert photo objects to URLs
+                const photoUrls = place.photos.slice(0, 5).map(photo => 
+                  photo.getUrl({ maxWidth: 400, maxHeight: 300 })
+                );
+                resolve(photoUrls);
+              } else {
+                resolve(['/placeholder-location.jpg']);
+              }
+            });
+          } else if (results[0].photos) {
+            // If we already have photos from the first query
+            const photoUrls = results[0].photos.slice(0, 5).map(photo => 
+              photo.getUrl({ maxWidth: 400, maxHeight: 300 })
+            );
+            resolve(photoUrls);
+          } else {
+            resolve(['/placeholder-location.jpg']);
+          }
+        } else {
+          resolve(['/placeholder-location.jpg']);
+        }
+      });
+    });
+    
+    // Cache the results
+    placeCache.set(cacheKey, {
+      photos,
+      timestamp: Date.now()
+    });
+    
+    return photos;
+  } catch (error) {
+    console.error('[Places Service] Error fetching place photos:', error);
+    return ['/placeholder-location.jpg'];
+  }
+} */
+/* export async function getPlacePhotos(location: Location): Promise<string[]> {
+    try {
+      // First ensure the Places service is initialized
+      const service = await initPlacesService();
+      
+      const cacheKey = `photos_${location.id}`;
+      // Check cache first
+      const cached = placeCache.get(cacheKey);
+      if (cached && cached.photos && (Date.now() - cached.timestamp < CACHE_DURATION)) {
+        return cached.photos;
+      }
+  
+      // Create a Promise wrapper around the async API
+      const photos = await new Promise<string[]>((resolve, reject) => {
+        service.findPlaceFromQuery({
+          query: location.name,
+          fields: ['photos', 'place_id']
+        }, (results, status) => {
+          if (status === google.maps.places.PlacesServiceStatus.OK && results && results.length > 0) {
+            // If we have a place_id, get details to get more photos
+            if (results[0].place_id) {
+              service.getDetails({
+                placeId: results[0].place_id,
+                fields: ['photos']
+              }, (place, detailsStatus) => {
+                if (detailsStatus === google.maps.places.PlacesServiceStatus.OK && place && place.photos) {
+                  // Convert photo objects to URLs
+                  const photoUrls = place.photos.slice(0, 5).map(photo => 
+                    photo.getUrl({ maxWidth: 400, maxHeight: 300 })
+                  );
+                  resolve(photoUrls);
+                } else {
+                  resolve(['/placeholder-location.jpg']);
+                }
+              });
+            } else if (results[0].photos) {
+              // If we already have photos from the first query
+              const photoUrls = results[0].photos.slice(0, 5).map(photo => 
+                photo.getUrl({ maxWidth: 400, maxHeight: 300 })
+              );
+              resolve(photoUrls);
+            } else {
+              resolve(['/placeholder-location.jpg']);
+            }
+          } else {
+            resolve(['/placeholder-location.jpg']);
+          }
+        });
+      });
+      
+      // Cache the results
+      placeCache.set(cacheKey, {
+        photos,
+        timestamp: Date.now()
+      });
+      
+      return photos;
+    } catch (error) {
+      console.error('[Places Service] Error fetching place photos:', error);
+      return ['/placeholder-location.jpg'];
+    }
+  } */
+/* export async function getPlacePhotos(location: Location): Promise<string[]> {
+  const cacheKey = `photos_${location.id}`;
+  // Check cache first
+  const cached = placeCache.get(cacheKey);
+  if (cached && cached.photos && (Date.now() - cached.timestamp < CACHE_DURATION)) {
+    return cached.photos;
+  }
+
+  try {
+    // First ensure the Places service is initialized
+    const service = await initPlacesService();  
+    // This requires a DOM element, can be any div
+    const placesDiv = document.createElement('div');
+    //const placesService = new google.maps.places.PlacesService(placesDiv);
+    
+    // Create a Promise wrapper around the async API
+    const photos = await new Promise<string[]>((resolve, reject) => {
+      service.findPlaceFromQuery({
+        query: location.name,
+        fields: ['photos', 'place_id']
+      }, (results, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK && results && results.length > 0) {
+          // If we have a place_id, get details to get more photos
+          if (results[0].place_id) {
+            service.getDetails({
+              placeId: results[0].place_id,
+              fields: ['photos']
+            }, (place, detailsStatus) => {
+              if (detailsStatus === google.maps.places.PlacesServiceStatus.OK && place && place.photos) {
+                // Convert photo objects to URLs - increased from 5 to 10
+                const photoUrls = place.photos.slice(0, 10).map(photo => 
+                  photo.getUrl({ maxWidth: 800, maxHeight: 800 })
+                );
+                resolve(photoUrls);
+              } else {
+                resolve(['/placeholder-location.jpg']);
+              }
+            });
+          } else if (results[0].photos) {
+            // If we already have photos from the first query - increased from 5 to 10
+            const photoUrls = results[0].photos.slice(0, 10).map(photo => 
+              photo.getUrl({ maxWidth: 800, maxHeight: 800 })
+            );
+            resolve(photoUrls);
+          } else {
+            resolve(['/placeholder-location.jpg']);
+          }
+        } else {
+          resolve(['/placeholder-location.jpg']);
+        }
+      });
+    });
+    
+    // Cache the results
+    placeCache.set(cacheKey, {
+      photos,
+      timestamp: Date.now()
+    });
+    
+    return photos;
+  } catch (error) {
+    console.error('[Places Service] Error fetching place photos:', error);
+    return ['/placeholder-location.jpg'];
+  }
+} */
+
+  export async function getPlacePhotos(location: Location): Promise<{
+    photos: string[];
+    description?: string;
+  }> {
+    const cacheKey = `photos_${location.id}`;
+    // Check cache first
+    const cached = placeCache.get(cacheKey);
+    if (cached && cached.photos && cached.description && 
+        (Date.now() - cached.timestamp < CACHE_DURATION)) {
+      return {
+        photos: cached.photos,
+        description: cached.description
+      };
+    }
+  
+    try {
+      // Initialize Places Service
+      const service = await initPlacesService();
+      
+      // Create a Promise wrapper around the async API
+      const result = await new Promise<{
+        photos: string[];
+        description?: string;
+      }>((resolve, reject) => {
+        service.findPlaceFromQuery({
+          query: location.name,
+          fields: ['photos', 'place_id', 'formatted_address']
+        }, (results, status) => {
+          if (status === google.maps.places.PlacesServiceStatus.OK && results && results.length > 0) {
+            // If we have a place_id, get details to get more photos and description
+            if (results[0].place_id) {
+              service.getDetails({
+                placeId: results[0].place_id,
+                fields: ['photos', 'formatted_address', 'editorial_summary', 'reviews']
+              }, (place, detailsStatus) => {
+                if (detailsStatus === google.maps.places.PlacesServiceStatus.OK && place) {
+                  // Get description from editorial_summary or formatted_address
+                  let description = '';
+                  if (place.editorial_summary && place.editorial_summary.overview) {
+                    description = place.editorial_summary.overview;
+                  } else if (place.formatted_address) {
+                    description = place.formatted_address;
+                  }
+                  
+                  // Convert photo objects to URLs with higher quality
+                  const photoUrls = place.photos 
+                    ? place.photos.slice(0, 10).map(photo => 
+                        photo.getUrl({ 
+                          maxWidth: 1200,  // Increased for higher quality
+                          maxHeight: 1200
+                        })
+                      )
+                    : ['/placeholder-location.jpg'];
+                  
+                  resolve({
+                    photos: photoUrls,
+                    description
+                  });
+                } else {
+                  resolve({
+                    photos: ['/placeholder-location.jpg']
+                  });
+                }
+              });
+            } else {
+              // If we already have photos from the first query
+              const photoUrls = results[0].photos 
+                ? results[0].photos.slice(0, 10).map(photo => 
+                    photo.getUrl({ 
+                      maxWidth: 400, 
+                      maxHeight: 400
+                    })
+                  )
+                : ['/placeholder-location.jpg'];
+              
+              resolve({
+                photos: photoUrls,
+                description: results[0].formatted_address || ''
+              });
+            }
+          } else {
+            resolve({
+              photos: ['/placeholder-location.jpg']
+            });
+          }
+        });
+      });
+      
+      // Cache the results
+      placeCache.set(cacheKey, {
+        photos: result.photos,
+        description: result.description || '',
+        timestamp: Date.now()
+      });
+      
+      return result;
+    } catch (error) {
+      console.error('[Places Service] Error fetching place photos:', error);
+      return {
+        photos: ['/placeholder-location.jpg']
+      };
+    }
+  }
+  
 // Calculate distance between two points in kilometers using the Haversine formula
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // Earth's radius in kilometers
