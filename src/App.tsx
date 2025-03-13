@@ -37,7 +37,7 @@ if (import.meta.env.VITE_POSTHOG_KEY) {
   });
 } */
 
-  /* // Initialize Sentry
+  // Initialize Sentry
   if (import.meta.env.VITE_SENTRY_DSN) {
     Sentry.init({
       dsn: import.meta.env.VITE_SENTRY_DSN,
@@ -132,7 +132,7 @@ if (import.meta.env.VITE_POSTHOG_KEY) {
     } else {
       devToolsOpened = false;
     }
-  }, 1000); */
+  }, 1000);
 
 export default function App() {
 
